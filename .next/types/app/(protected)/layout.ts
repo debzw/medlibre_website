@@ -1,4 +1,4 @@
-// File: C:\Users\debor\OneDrive\Documentos\medresidency-prep\app\(protected)\layout.tsx
+// File: C:\Users\debor\OneDrive\Documentos\medlibre_website\app\(protected)\layout.tsx
 import * as entry from '../../../../app/(protected)/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

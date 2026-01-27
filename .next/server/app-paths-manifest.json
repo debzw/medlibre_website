@@ -1,6 +1,8 @@
 {
   "/page": "app/page.js",
-  "/(protected)/profile/page": "app/(protected)/profile/page.js",
-  "/(protected)/setup/page": "app/(protected)/setup/page.js",
-  "/(protected)/app/page": "app/(protected)/app/page.js"
+  "/auth/page": "app/auth/page.js",
+  "/about/page": "app/about/page.js",
+  "/(protected)/app/page": "app/(protected)/app/page.js",
+  "/(protected)/statistics/page": "app/(protected)/statistics/page.js",
+  "/(protected)/profile/page": "app/(protected)/profile/page.js"
 }

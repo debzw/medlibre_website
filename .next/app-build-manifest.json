@@ -36,10 +36,20 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(protected)/app/page.js"
     ],
-    "/(protected)/setup/page": [
+    "/(protected)/statistics/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(protected)/setup/page.js"
+      "static/chunks/app/(protected)/statistics/page.js"
+    ],
+    "/auth/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/auth/page.js"
+    ],
+    "/about/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/about/page.js"
     ],
     "/(protected)/profile/page": [
       "static/chunks/webpack.js",
