@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Option A: Connected Line (ML Crown) -->
+  <!-- Primary Color: MedLibre Amber (hsl(43 85% 50%) -> #EDB92E) -->
+  
+  <!-- L Shape Base -->
+  <path d="M20 20 V80 H80" stroke="#EDB92E" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- M Peaks -->
+  <path d="M20 20 L50 60 L80 20 V50" stroke="#EDB92E" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

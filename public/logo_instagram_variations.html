@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedLibre Logo Variations</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            background: #f0f0f0;
+            font-family: sans-serif;
+        }
+        .container {
+            width: 1080px;
+            height: 1080px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        svg {
+            width: 600px;
+            height: 600px;
+        }
+        
+        /* Variation 1: Classic Dark */
+        .v1 { background-color: #0e1217; }
+        .v1 path { stroke: #EDB92E; }
+
+        /* Variation 2: Vibrant Amber */
+        .v2 { background-color: #EDB92E; }
+        .v2 path { stroke: #FFFFFF; }
+
+        /* Variation 3: Clean White */
+        .v3 { background-color: #FFFFFF; }
+        .v3 path { stroke: #EDB92E; }
+
+        /* Variation 4: Premium Glow */
+        .v4 { background-color: #0e1217; }
+        .v4 path { 
+            stroke: #EDB92E; 
+            filter: drop-shadow(0 0 15px rgba(237, 185, 46, 0.6));
+        }
+        .v4 .glow-bg {
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(237, 185, 46, 0.1) 0%, rgba(237, 185, 46, 0) 70%);
+        }
+
+        .label {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.3);
+            font-size: 24px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .v3 .label { color: rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div id="variation1" class="container v1">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 20 V80 H80" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 20 L50 60 L80 20 V50" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+
+    <div id="variation2" class="container v2">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 20 V80 H80" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 20 L50 60 L80 20 V50" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+
+    <div id="variation3" class="container v3">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 20 V80 H80" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 20 L50 60 L80 20 V50" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+
+    <div id="variation4" class="container v4">
+        <div class="glow-bg"></div>
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 20 V80 H80" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M20 20 L50 60 L80 20 V50" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </div>
+</body>
+</html>

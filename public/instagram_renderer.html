@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Renderer - medlibre</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background: 220 20% 8%;
+            /* #0E1114 */
+            --foreground: 0 0% 95%;
+            /* #F2F2F2 */
+            --primary: 43 85% 50%;
+            /* #EDB92E */
+        }
+
+        body {
+            background-color: #050505;
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: #F2F2F2;
+        }
+
+        .post-container {
+            width: 1080px;
+            height: 1080px;
+            background-color: #0E1114;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            margin: 40px auto;
+            border: 1px solid #272D35;
+        }
+
+        .text-amber {
+            color: #EDB92E;
+        }
+
+        .bg-amber {
+            background-color: #EDB92E;
+        }
+
+        .logo-small {
+            position: absolute;
+            top: 80px;
+            width: 60px;
+            height: 60px;
+            opacity: 0.8;
+        }
+
+        .footer-logo {
+            position: absolute;
+            bottom: 80px;
+            opacity: 0.6;
+        }
+
+        .hook-text {
+            font-size: 84px;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            text-align: center;
+            max-width: 800px;
+        }
+
+        .body-text {
+            font-size: 42px;
+            font-weight: 400;
+            line-height: 1.4;
+            text-align: center;
+            max-width: 850px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- WEEK 5 SLIDE 1: LER NÃO É APRENDER -->
+    <div class="post-container" id="week5-s1">
+        <img src="logo.svg" alt="logo" class="logo-small">
+        <h1 class="hook-text">Ler não é <br> <span class="text-amber">aprender.</span></h1>
+    </div>
+
+    <!-- WEEK 5 SLIDE 2: EXPLICAÇÃO -->
+    <div class="post-container" id="week5-s2">
+        <p class="body-text">
+            A "Ilusão da Competência" acontece quando você lê um resumo e acha que sabe o conteúdo. <br><br>
+            <span class="font-bold">O cérebro só retém quando é testado.</span>
+        </p>
+    </div>
+
+    <!-- WEEK 6: AUDITORIA DE TEMPO -->
+    <div class="post-container" id="week6">
+        <div class="logo-small flex flex-col items-center">
+            <img src="logo.svg" alt="logo" class="w-full">
+            <span class="text-[10px] uppercase tracking-widest mt-2 opacity-50 font-mono">[TIME AUDIT]</span>
+        </div>
+        <div class="space-y-12">
+            <div class="flex items-center gap-10">
+                <div
+                    class="w-24 h-24 rounded-full border-2 border-white/10 flex items-center justify-center text-2xl font-mono opacity-50">
+                    20%</div>
+                <div class="text-3xl">1h de Videoaula</div>
+            </div>
+            <div class="flex items-center gap-10">
+                <div
+                    class="w-24 h-24 rounded-full border-2 border-amber flex items-center justify-center text-2xl font-mono text-amber">
+                    85%</div>
+                <div class="text-3xl font-bold">1h de medlibre</div>
+            </div>
+        </div>
+        <p class="absolute bottom-40 text-sm opacity-40 uppercase tracking-[0.3em]">Retenção de Conhecimento</p>
+    </div>
+
+    <!-- WEEK 7: O PODER DO ERRO -->
+    <div class="post-container" id="week7">
+        <div
+            class="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(237,185,46,0.05)_0%,_transparent_70%)]">
+        </div>
+        <h1 class="hook-text z-10">No medlibre, o erro não é uma falha. <br> <span class="text-amber">É um dado.</span>
+        </h1>
+        <div class="mt-20 p-8 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm z-10">
+            <div class="flex items-center gap-4">
+                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                <div class="text-xl font-mono opacity-70">Taxa de Erro: Cardiologia</div>
+                <div class="text-xl font-bold ml-10">42%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WEEK 8 SLIDE 1: POR QUE É GRÁTIS? -->
+    <div class="post-container" id="week8-s1">
+        <img src="logo.svg" alt="logo" class="logo-small">
+        <h1 class="hook-text">Por que é <br> <span class="text-amber">grátis?</span></h1>
+    </div>
+
+    <!-- WEEK 8 SLIDE 2: FILOSOFIA -->
+    <div class="post-container" id="week8-s2">
+        <p class="body-text">
+            Porque acreditamos que o acesso à residência não deve ser um privilégio de quem pode pagar <br> <span
+                class="text-amber font-bold text-5xl">30k por ano.</span>
+        </p>
+    </div>
+
+    <div class="p-10 text-center opacity-50 text-white">
+        <p>Instruções: Abra este arquivo no Chrome e tire print da área de cada container.</p>
+    </div>
+
+</body>
+
+</html>

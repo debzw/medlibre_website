@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /app
+Disallow: /setup
+Disallow: /statistics
+Disallow: /profile
+Disallow: /admin
+Disallow: /auth
+Disallow: /dev-login
+
+Sitemap: https://medlibre.com.br/sitemap.xml

@@ -1,0 +1,270 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* MedLibre Design System - Apple-style Medical Aesthetic */
+
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Lexend+Deca:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* MedLibre Brand Identity - Gold, Indigo, and Grey */
+    --background: 40 10% 96%;
+    /* White Smoke #F6F5F4 */
+    --foreground: 225 11% 15%;
+    /* Shadow Grey #212329 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 225 11% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 11% 15%;
+
+    /* Primary - Sunflower Gold #EDB92E */
+    --primary: 43 85% 55%;
+    --primary-foreground: 225 11% 15%;
+    /* Shadow Grey for better contrast on Gold */
+
+    /* Secondary - Light Pearl Beige for badges/labels */
+    --secondary: 41 74% 92%;
+    --secondary-foreground: 223 33% 24%;
+
+    /* Muted tones - Refined Pearl Beige */
+    --muted: 41 74% 88%;
+    --muted-foreground: 225 11% 45%;
+
+    /* Accent - Pearl Beige tint */
+    --accent: 41 74% 92%;
+    --accent-foreground: 223 33% 24%;
+
+    /* Success/Error states */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders and inputs - Neutral/Indigo tint for premium feel */
+    --border: 223 15% 90%;
+    --input: 223 15% 90%;
+    --ring: 43 85% 55%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 40 10% 98%;
+    --sidebar-foreground: 225 11% 25%;
+    --sidebar-primary: 43 85% 55%;
+    --sidebar-primary-foreground: 225 11% 15%;
+    --sidebar-accent: 41 74% 92%;
+    --sidebar-accent-foreground: 223 33% 24%;
+    --sidebar-border: 223 15% 90%;
+    --sidebar-ring: 43 85% 55%;
+
+    /* Custom MedLibre tokens */
+    --amber-glow: 43 100% 60%;
+    --amber-subtle: 43 30% 97%;
+    --amber-border: 43 50% 85%;
+    --correct-answer: 142 70% 45%;
+    --incorrect-answer: 0 72% 51%;
+    --neutral-answer: 220 13% 91%;
+  }
+
+  .dark {
+    --background: 225 11% 15%;
+    /* Shadow Grey #212329 */
+    --foreground: 40 10% 96%;
+    /* White Smoke #F6F5F4 */
+
+    --card: 225 11% 18%;
+    --card-foreground: 40 10% 96%;
+
+    --popover: 225 11% 18%;
+    --popover-foreground: 40 10% 96%;
+
+    --primary: 43 85% 55%;
+    /* Sunflower Gold #EDB92E */
+    --primary-foreground: 225 11% 15%;
+
+    --secondary: 223 33% 24%;
+    /* Twilight Indigo #293452 */
+    --secondary-foreground: 40 10% 96%;
+
+    --muted: 225 11% 25%;
+    --muted-foreground: 40 10% 70%;
+
+    --accent: 41 74% 25%;
+    /* Dark Pearl Beige */
+    --accent-foreground: 40 10% 96%;
+
+    --success: 142 70% 50%;
+    --success-foreground: 225 11% 15%;
+
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 95%;
+
+    --border: 225 11% 25%;
+    --input: 225 11% 25%;
+    --ring: 43 85% 55%;
+
+    --sidebar-background: 225 11% 16%;
+    --sidebar-foreground: 40 10% 90%;
+    --sidebar-primary: 43 85% 55%;
+    --sidebar-primary-foreground: 225 11% 15%;
+    --sidebar-accent: 41 74% 20%;
+    --sidebar-accent-foreground: 40 10% 96%;
+    --sidebar-border: 225 11% 25%;
+    --sidebar-ring: 43 85% 55%;
+
+    --amber-glow: 43 100% 65%;
+    --amber-subtle: 43 20% 12%;
+    --amber-border: 43 40% 25%;
+    --correct-answer: 142 70% 50%;
+    --incorrect-answer: 0 62% 45%;
+    --neutral-answer: 220 15% 25%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Lexend Deca', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Archivo Black', sans-serif;
+    font-weight: 400;
+    /* Archivo Black only has one weight */
+    letter-spacing: -0.02em;
+    text-transform: none;
+  }
+}
+
+@layer components {
+
+  /* Card styles with subtle shadow */
+  .card-elevated {
+    @apply bg-card rounded-xl border border-border;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 16px rgba(0, 0, 0, 0.04);
+  }
+
+  /* Question option styles */
+  .option-base {
+    @apply w-full text-left p-4 rounded-xl border-2 transition-all duration-200;
+    @apply hover:border-primary/50 hover:bg-accent/30;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/30;
+  }
+
+  .option-neutral {
+    @apply option-base border-border bg-card;
+  }
+
+  .option-correct {
+    @apply option-base border-[hsl(var(--correct-answer))] bg-[hsl(var(--correct-answer)/0.1)];
+  }
+
+  .option-incorrect {
+    @apply option-base border-[hsl(var(--incorrect-answer))] bg-[hsl(var(--incorrect-answer)/0.1)];
+  }
+
+  .option-disabled {
+    @apply opacity-60 cursor-not-allowed hover:border-border hover:bg-card;
+  }
+
+  /* Filter chip */
+  .filter-chip {
+    @apply px-4 py-2 rounded-full border border-border bg-card text-sm font-medium;
+    @apply transition-all duration-200 cursor-pointer;
+    @apply hover:border-primary/50 hover:bg-accent/30;
+  }
+
+  .filter-chip-active {
+    @apply filter-chip border-primary bg-primary text-primary-foreground;
+    @apply hover:bg-primary/90 hover:border-primary;
+  }
+
+  /* Amber accent button */
+  .btn-amber {
+    @apply bg-primary text-primary-foreground font-medium;
+    @apply hover:bg-primary/90 transition-all duration-200;
+    @apply shadow-sm hover:shadow-md;
+  }
+
+  /* Ad placeholder */
+  .ad-placeholder {
+    @apply bg-amber-subtle border border-amber-border rounded-xl;
+    @apply flex items-center justify-center text-muted-foreground text-sm;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-background/80 backdrop-blur-lg border border-border/50;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}

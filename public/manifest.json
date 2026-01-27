@@ -1,0 +1,16 @@
+{
+    "short_name": "medlibre",
+    "name": "medlibre - Preparação para Residência Médica",
+    "description": "Plataforma gratuita de preparação para residência médica com banco de questões.",
+    "icons": [
+        {
+            "src": "/logo.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#EDB92E",
+    "background_color": "#212329"
+}
