@@ -139,15 +139,20 @@ RETURNS SETOF public.questions
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    v_srs_ratio FLOAT := 0.45;
-    v_weak_ratio FLOAT := 0.30;
-    v_discovery_ratio FLOAT := 0.15;
-    v_srs_limit INTEGER; v_weak_limit INTEGER; v_discovery_limit INTEGER; v_random_limit INTEGER;
+    -- New Balanced Ratios (25/25/25/25 split)
+    v_srs_ratio FLOAT := 0.25;      -- Review due (SRS)
+    v_weak_ratio FLOAT := 0.25;     -- Weak themes
+    v_discovery_ratio FLOAT := 0.25; -- New themes (Discovery)
+    
+    -- Calculated limits
+    v_srs_limit INTEGER; 
+    v_weak_limit INTEGER; 
+    v_discovery_limit INTEGER; 
+    -- Random limit isn't strictly needed as a constraint anymore, we'll use p_limit for general to backfill
 BEGIN
     v_srs_limit := CEIL(p_limit * v_srs_ratio);
     v_weak_limit := CEIL(p_limit * v_weak_ratio);
     v_discovery_limit := CEIL(p_limit * v_discovery_ratio);
-    v_random_limit := p_limit - v_srs_limit - v_weak_limit - v_discovery_limit;
 
     RETURN QUERY
     WITH 
@@ -160,6 +165,8 @@ BEGIN
           AND (p_tema IS NULL OR output_tema = p_tema)
     ),
     answered_ids AS (SELECT DISTINCT question_id FROM public.user_question_history WHERE user_id = p_user_id),
+    
+    -- 1. SRS (Spaced Repetition) - Due for review
     srs_due AS (
         SELECT q.*, 1 as priority, (1.0 / (EXTRACT(EPOCH FROM (NOW() - s.next_review)) + 1)) as weight
         FROM filtered_pool q
@@ -168,6 +175,8 @@ BEGIN
           AND (NOT p_hide_answered OR q.id NOT IN (SELECT question_id FROM answered_ids))
         ORDER BY s.next_review ASC LIMIT v_srs_limit
     ),
+    
+    -- 2. Weak Themes - Focus on difficult areas
     weak_themes AS (
         SELECT theme_name, mastery_score FROM public.user_theme_stats
         WHERE user_id = p_user_id AND mastery_score < 0.75
@@ -177,31 +186,49 @@ BEGIN
         SELECT q.*, 2 as priority, (1.0 - wt.mastery_score) as weight
         FROM filtered_pool q
         JOIN weak_themes wt ON q.output_tema = wt.theme_name
-        WHERE q.id NOT IN (SELECT question_id FROM answered_ids) AND q.id NOT IN (SELECT id FROM srs_due)
+        WHERE q.id NOT IN (SELECT question_id FROM answered_ids) 
+          AND q.id NOT IN (SELECT id FROM srs_due) -- Exclude already picked
         ORDER BY wt.mastery_score ASC, RANDOM() LIMIT v_weak_limit
     ),
+    
+    -- 3. Discovery - New topics never studied before
     discovery_questions AS (
         SELECT q.*, 3 as priority, RANDOM() as weight
         FROM filtered_pool q
-        WHERE q.id NOT IN (SELECT question_id FROM answered_ids) AND q.id NOT IN (SELECT id FROM srs_due)
+        WHERE q.id NOT IN (SELECT question_id FROM answered_ids) 
+          AND q.id NOT IN (SELECT id FROM srs_due)
           AND q.id NOT IN (SELECT id FROM weak_theme_questions)
           AND q.output_tema NOT IN (SELECT theme_name FROM public.user_theme_stats WHERE user_id = p_user_id)
         ORDER BY RANDOM() LIMIT v_discovery_limit
     ),
+    
+    -- 4. General New / Random - Fill the remainder
     general_new AS (
         SELECT q.*, 4 as priority, RANDOM() as weight
         FROM filtered_pool q
-        WHERE q.id NOT IN (SELECT question_id FROM answered_ids) AND q.id NOT IN (SELECT id FROM srs_due)
-          AND q.id NOT IN (SELECT id FROM weak_theme_questions) AND q.id NOT IN (SELECT id FROM discovery_questions)
-        ORDER BY RANDOM() LIMIT v_random_limit
+        WHERE q.id NOT IN (SELECT question_id FROM answered_ids) 
+          AND q.id NOT IN (SELECT id FROM srs_due)
+          AND q.id NOT IN (SELECT id FROM weak_theme_questions) 
+          AND q.id NOT IN (SELECT id FROM discovery_questions)
+        ORDER BY RANDOM() LIMIT p_limit -- Allow filling up to the full limit if others are empty
     ),
+    
     all_candidates AS (
-        SELECT * FROM srs_due UNION ALL SELECT * FROM weak_theme_questions UNION ALL
-        SELECT * FROM discovery_questions UNION ALL SELECT * FROM general_new
+        SELECT * FROM srs_due 
+        UNION ALL 
+        SELECT * FROM weak_theme_questions 
+        UNION ALL
+        SELECT * FROM discovery_questions 
+        UNION ALL 
+        SELECT * FROM general_new
     )
-    SELECT id, banca, ano, enunciado, imagem_url, opcoes, resposta_correta, created_at,
-           especialidade, output_grande_area, output_especialidade, output_tema, 
-           output_subtema, output_explicacao, output_gabarito, status_imagem, referencia_imagem
+    SELECT 
+        id, banca, ano, enunciado, imagem_url, opcoes, resposta_correta, 
+        status_imagem, referencia_imagem, alternativa_a, alternativa_b, 
+        alternativa_c, alternativa_d, alternativa_e, especialidade, 
+        output_gabarito, output_explicacao, output_grande_area, 
+        output_especialidade, output_tema, output_subtema, 
+        output_taxa_certeza, processado, created_at, id_integracao
     FROM all_candidates ORDER BY priority ASC, weight DESC LIMIT p_limit;
 END;
 $$;

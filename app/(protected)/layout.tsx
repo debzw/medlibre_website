@@ -1,6 +1,6 @@
 'use client';
 
-import { Header } from '@/components/Header';
+
 
 export default function ProtectedLayout({
     children,
@@ -8,9 +8,6 @@ export default function ProtectedLayout({
     children: React.ReactNode;
 }) {
     return (
-        <>
-            <Header />
-            <main className="flex-1">{children}</main>
-        </>
+        <main className="flex-1">{children}</main>
     );
 }

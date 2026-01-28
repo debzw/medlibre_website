@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Footer } from '@/components/Footer';
+import { Header } from '@/components/Header';
+import { CookieBanner } from '@/components/CookieBanner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -73,8 +75,10 @@ export default function RootLayout({
             <body className={`${inter.className} min-h-screen flex flex-col`}>
                 <Providers>
                     <div className="flex-1 flex flex-col">
+                        <Header />
                         {children}
                     </div>
+                    <CookieBanner />
                     <Footer />
                 </Providers>
             </body>

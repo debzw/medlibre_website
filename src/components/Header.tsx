@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -8,6 +9,12 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 
 export function Header() {
   const { user, profile, signOut, userType, getRemainingQuestions } = useAuthContext();
+  const pathname = usePathname();
+
+  // Hide header on landing page and pricing page
+  if (pathname === '/' || pathname === '/pricing') {
+    return null;
+  }
 
   const handleSignOut = async () => {
     await signOut();
