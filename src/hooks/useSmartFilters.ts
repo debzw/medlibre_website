@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fuzzyMatch } from '@/lib/searchUtils';
 
 export type Combination = [string, number, string, string, string, number]; // [banca, ano, especialidade, grande_area, tema, q_count]
 
@@ -33,6 +34,45 @@ export const useSmartFilters = () => {
 
     const combinations = data?.combinations || [];
 
+    // Helper to calculate match score for sorting
+    const getMatchScore = (text: string, queryParts: string[]) => {
+        if (!text || queryParts.length === 0) return 0;
+        const lowerText = text.toLowerCase();
+
+        let score = 0;
+
+        // Exact/Prefix match bonus for the full query
+        const fullQuery = queryParts.join(' ');
+        if (lowerText === fullQuery) return 100;
+        if (lowerText.startsWith(fullQuery)) return 90;
+
+        // Word match scoring
+        const words = lowerText.split(/[\s-]+/); // Split by space or hyphen
+
+        for (const part of queryParts) {
+            let partMatched = false;
+            // Check against words
+            for (const word of words) {
+                if (word === part) {
+                    score += 50;
+                    partMatched = true;
+                } else if (word.startsWith(part)) {
+                    score += 30;
+                    partMatched = true;
+                } else if (part.length >= 3 && word.includes(part)) {
+                    score += 10;
+                    partMatched = true;
+                }
+            }
+            // Fallback to fuzzy if no direct word match
+            if (!partMatched && fuzzyMatch(text, part)) {
+                score += 5;
+            }
+        }
+
+        return score;
+    };
+
     // Helper to check if a combination matches the search query
     const matchesSearch = (combination: Combination, query: string) => {
         if (!query) return true;
@@ -40,58 +80,95 @@ export const useSmartFilters = () => {
         if (!lowerQuery) return true;
 
         const [banca, _, especialidade, area, tema] = combination;
-        const searchableText = `${banca} ${especialidade} ${area} ${tema}`.toLowerCase();
+        const queryParts = lowerQuery.split(/\s+/).filter(p => p.length > 0);
 
-        // Simple "all terms must exist" logic
-        const terms = lowerQuery.split(/\s+/);
-        return terms.every(term => searchableText.includes(term));
+        // All query parts must match SOMETHING in the combination
+        return queryParts.every(part => {
+            // 1. Strict checks for short terms (< 3 chars)
+            // Reduces noise like "PA" matching inside "Hepatorrenal"
+            if (part.length < 3) {
+                return [banca, especialidade, area, tema].some(field => {
+                    if (!field) return false;
+                    // Must start a word
+                    return field.toLowerCase().split(/[\s-]+/).some(w => w.startsWith(part));
+                });
+            }
+
+            // 2. Normal fuzzy checks for longer terms
+            const searchableText = `${banca} ${especialidade} ${area} ${tema}`;
+            return fuzzyMatch(searchableText, part);
+        });
     };
 
     // Logic to calculate "Alive" options based on current selections AND search query
+    // Includes scoring to prioritize relevant matches
     const aliveOptions = useMemo(() => {
-        const bancas = new Map<string, number>();
-        const anos = new Map<number, number>();
-        const areas = new Map<string, number>();
-        const especialidades = new Map<string, number>();
-        const temas = new Map<string, number>();
+        const queryParts = searchQuery.toLowerCase().trim().split(/\s+/).filter(p => p.length > 0);
+
+        // Maps store { count, score }
+        const bancas = new Map<string, { count: number; score: number }>();
+        const anos = new Map<number, { count: number; score: number }>();
+        const areas = new Map<string, { count: number; score: number }>();
+        const especialidades = new Map<string, { count: number; score: number }>();
+        const temas = new Map<string, { count: number; score: number }>();
 
         combinations.forEach((combo) => {
             const [banca, ano, especialidade, area, tema, count] = combo;
 
-            // Check global search match first
+            // Global Filter Check
             if (!matchesSearch(combo, searchQuery)) return;
 
-            // Check if this combination matches all *other* filters
+            // Cross-Filter Checks
             const matchesBanca = !selectedBanca || banca === selectedBanca;
             const matchesAno = !selectedAno || ano === selectedAno;
             const matchesArea = !selectedArea || area === selectedArea;
             const matchesEspecialidade = !selectedEspecialidade || especialidade === selectedEspecialidade;
             const matchesTema = !selectedTema || tema === selectedTema;
 
-            // Update counters for each field if the *rest* of the filters match
+            // Helper to update map with score tracking
+            const updateMap = (map: Map<any, any>, key: any, textForScore: string | null) => {
+                const current = map.get(key) || { count: 0, score: 0 };
+                const itemScore = textForScore ? getMatchScore(textForScore, queryParts) : 0;
+                map.set(key, {
+                    count: current.count + count,
+                    score: Math.max(current.score, itemScore)
+                });
+            };
+
             if (matchesAno && matchesArea && matchesEspecialidade && matchesTema) {
-                bancas.set(banca, (bancas.get(banca) || 0) + count);
+                updateMap(bancas, banca, banca);
             }
             if (matchesBanca && matchesArea && matchesEspecialidade && matchesTema) {
-                anos.set(ano, (anos.get(ano) || 0) + count);
+                updateMap(anos, ano, ano.toString());
             }
             if (matchesBanca && matchesAno && matchesEspecialidade && matchesTema) {
-                areas.set(area, (areas.get(area) || 0) + count);
+                updateMap(areas, area, area);
             }
             if (matchesBanca && matchesAno && matchesArea && matchesTema) {
-                especialidades.set(especialidade, (especialidades.get(especialidade) || 0) + count);
+                updateMap(especialidades, especialidade, especialidade);
             }
             if (matchesBanca && matchesAno && matchesArea && matchesEspecialidade) {
-                temas.set(tema, (temas.get(tema) || 0) + count);
+                updateMap(temas, tema, tema);
             }
         });
 
+        // Sorter: High relevance first, then high count
+        const relevanceSorter = (a: [any, { count: number, score: number }], b: [any, { count: number, score: number }]) => {
+            if (b[1].score !== a[1].score) return b[1].score - a[1].score;
+            return b[1].count - a[1].count;
+        };
+
+        const formatOutput = (map: Map<any, { count: number, score: number }>) =>
+            // Returning [key, count, score]
+            Array.from(map.entries()).sort(relevanceSorter).map(([key, val]) => [key, val.count, val.score] as [any, number, number]);
+
         return {
-            bancas: Array.from(bancas.entries()).sort((a, b) => b[1] - a[1]),
-            anos: Array.from(anos.entries()).sort((a, b) => b[0] - a[0]),
-            areas: Array.from(areas.entries()).sort((a, b) => b[1] - a[1]),
-            especialidades: Array.from(especialidades.entries()).sort((a, b) => b[1] - a[1]),
-            temas: Array.from(temas.entries()).sort((a, b) => b[1] - a[1]),
+            bancas: formatOutput(bancas),
+            // Anos usually better sorted numerically descending
+            anos: Array.from(anos.entries()).sort((a, b) => b[0] - a[0]).map(([k, v]) => [k, v.count, 0] as [number, number, number]),
+            areas: formatOutput(areas),
+            especialidades: formatOutput(especialidades),
+            temas: formatOutput(temas),
         };
     }, [combinations, selectedBanca, selectedAno, selectedArea, selectedEspecialidade, selectedTema, searchQuery]);
 

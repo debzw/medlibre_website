@@ -28,6 +28,7 @@ const nextConfig = {
             bodySizeLimit: '2mb',
         },
     },
+    typedRoutes: false,
 
     // Webpack configuration for compatibility
     webpack: (config, { isServer }) => {

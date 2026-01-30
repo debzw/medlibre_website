@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AliveFilterProps {
     label: string;
-    options: [string | number, number][]; // [value, count]
+    options: [string | number, number, number][]; // [value, count, score (optional ignored)]
     selected: string | number | null;
     onSelect: (value: any) => void;
     className?: string;
