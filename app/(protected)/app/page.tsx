@@ -47,7 +47,7 @@ export default function QuestionsPage() {
     }, [searchParams]);
 
     const { options, loading: optionsLoading } = useFilterOptions();
-    const { questions: allQuestions, loading: questionsLoading, refetch } = useQuestions({
+    const { questions: allQuestions, loading: questionsLoading, error: questionsError, refetch } = useQuestions({
         banca: selectedBanca,
         ano: selectedAno,
         campo_medico: selectedCampo,
@@ -87,12 +87,26 @@ export default function QuestionsPage() {
     const currentQuestionIndex = currentQuestionId ? questions.findIndex(q => q.id === currentQuestionId) : -1;
     const currentQuestion = currentQuestionIndex >= 0 ? questions[currentQuestionIndex] : null;
 
-    if (!currentQuestionId && questions.length > 0 && historyIndex === -1) {
-        setCurrentQuestionId(questions[0].id);
-        const firstId = questions[0].id;
-        setQuestionHistory([firstId]);
-        setHistoryIndex(0);
-    }
+    useEffect(() => {
+        // Case 1: Initial load or reset - No ID selected
+        if (!currentQuestionId && questions.length > 0 && historyIndex === -1) {
+            const firstId = questions[0].id;
+            setCurrentQuestionId(firstId);
+            setQuestionHistory([firstId]);
+            setHistoryIndex(0);
+        }
+        // Case 2: Stale ID - Selected ID is not in the current list
+        else if (currentQuestionId && questions.length > 0) {
+            const isCurrentIdValid = questions.some(q => q.id === currentQuestionId);
+            if (!isCurrentIdValid) {
+                console.log("⚠️ Stale ID detected, resetting to first available question");
+                const firstId = questions[0].id;
+                setCurrentQuestionId(firstId);
+                setQuestionHistory([firstId]);
+                setHistoryIndex(0);
+            }
+        }
+    }, [currentQuestionId, questions, historyIndex]);
 
     const historyEntry = currentQuestionId ? getQuestionAttempts(currentQuestionId)?.[0] : undefined;
     const isQuestionAnswered = !!historyEntry || recentlyAnsweredId === currentQuestionId;
@@ -255,10 +269,35 @@ export default function QuestionsPage() {
                     {/* Content */}
                     {questionsLoading ? (
                         <LoadingState />
+                    ) : questionsError ? (
+                        <EmptyState
+                            title="Erro ao carregar questões"
+                            description={questionsError}
+                            action={{
+                                label: "Tentar Novamente",
+                                onClick: () => refetch()
+                            }}
+                        />
                     ) : (!canAnswerMore() && !isQuestionAnswered) ? (
                         <LimitReachedCard />
                     ) : questions.length === 0 ? (
-                        <EmptyState />
+                        <EmptyState
+                            title={hideAnswered ? "Você resolveu todas as questões deste bloco!" : "Nenhuma questão encontrada"}
+                            description={allQuestions.length > 0 && hideAnswered
+                                ? `Você já resolveu as ${allQuestions.length} questões carregadas. Desative o filtro 'Ocultar respondidas' para revê-las.`
+                                : "Tente ajustar os filtros para encontrar mais questões."}
+                            action={hideAnswered ? {
+                                label: "Ver Questões Respondidas",
+                                onClick: () => setHideAnswered(false)
+                            } : {
+                                label: "Limpar Filtros",
+                                onClick: () => {
+                                    const params = new URLSearchParams();
+                                    router.push(`?${params.toString()}`, { scroll: false });
+                                    resetFilters();
+                                }
+                            }}
+                        />
                     ) : currentQuestion ? (
                         <div className="space-y-6">
                             <QuestionCard
@@ -294,7 +333,12 @@ export default function QuestionsPage() {
                                 </Button>
                             </div>
                         </div>
-                    ) : null}
+                    ) : (
+                        <div className="flex flex-col items-center justify-center p-12 space-y-4 animate-fade-in">
+                            <LoadingState />
+                            <p className="text-muted-foreground">Selecionando a melhor questão para você...</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar ads - desktop only */}

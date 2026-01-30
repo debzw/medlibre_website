@@ -356,13 +356,13 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
     },
   });
 
-  const isQuestionAnswered = (questionId: string): boolean => {
+  const isQuestionAnswered = useCallback((questionId: string): boolean => {
     return history.some(h => h.question_id === questionId);
-  };
+  }, [history]);
 
-  const getQuestionAttempts = (questionId: string): QuestionHistoryEntry[] => {
+  const getQuestionAttempts = useCallback((questionId: string): QuestionHistoryEntry[] => {
     return history.filter(h => h.question_id === questionId);
-  };
+  }, [history]);
 
   return {
     history,
