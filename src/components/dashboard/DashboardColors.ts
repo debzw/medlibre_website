@@ -8,13 +8,13 @@ export const DASHBOARD_COLORS = {
 export type PerformanceStatus = 'critical' | 'good' | 'gold' | 'neutral';
 
 export const getPerformanceColor = (percentage: number): string => {
-    if (percentage >= 90) return DASHBOARD_COLORS.gold;
-    if (percentage >= 60) return DASHBOARD_COLORS.good;
+    if (percentage >= 90) return DASHBOARD_COLORS.good;
+    if (percentage >= 60) return DASHBOARD_COLORS.gold;
     return DASHBOARD_COLORS.critical;
 };
 
 export const getPerformanceStatus = (percentage: number): PerformanceStatus => {
-    if (percentage >= 90) return 'gold';
-    if (percentage >= 60) return 'good';
+    if (percentage >= 90) return 'good';
+    if (percentage >= 60) return 'gold';
     return 'critical';
 };

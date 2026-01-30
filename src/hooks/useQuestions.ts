@@ -11,6 +11,7 @@ interface UseQuestionsOptions {
   tema?: string;
   search?: string;
   hideAnswered?: boolean;
+  status?: 'all_answered' | 'correct' | 'incorrect';
 }
 
 export function useQuestions(filters: UseQuestionsOptions = {}) {
@@ -21,7 +22,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
   useEffect(() => {
     fetchQuestions();
-  }, [filters.banca, filters.ano, filters.campo_medico, filters.especialidade, filters.tema, filters.search, filters.hideAnswered, user?.id]);
+  }, [filters.banca, filters.ano, filters.campo_medico, filters.especialidade, filters.tema, filters.search, filters.hideAnswered, filters.status, user?.id]);
 
   const fetchQuestions = async () => {
     setLoading(true);
@@ -40,8 +41,8 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
       let fetchError: any = null;
 
       // Use RPC if user is logged in (Intelligent SRS-based Fetching)
-      // EXCEPT when using text search, which is better handled by standard query for now
-      const canUseRPC = user && !(filters.search && filters.search.trim().length > 0);
+      // EXCEPT when using text search or status filtering, which are better handled by standard query for now
+      const canUseRPC = user && !filters.status && !(filters.search && filters.search.trim().length > 0);
 
       if (canUseRPC) {
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_study_session_questions', {
@@ -57,8 +58,38 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
         data = rpcData;
         fetchError = rpcError;
       } else {
-        // Fallback for guests OR text search
+        // Fallback for guests OR text search OR status filtering
         let query = supabase.from('questions').select('*');
+
+        if (filters.status && user) {
+          // Get question IDs from history based on status
+          let historyQuery = supabase
+            .from('user_question_history')
+            .select('question_id')
+            .eq('user_id', user.id);
+
+          if (filters.status === 'correct') {
+            historyQuery = historyQuery.eq('is_correct', true);
+          } else if (filters.status === 'incorrect') {
+            historyQuery = historyQuery.eq('is_correct', false);
+          }
+
+          const { data: historyItems, error: historyError } = await historyQuery;
+
+          if (historyError) {
+            console.error('Error fetching history for status filter:', historyError);
+            data = [];
+          } else if (historyItems && historyItems.length > 0) {
+            const questionIds = historyItems.map(item => item.question_id);
+            query = query.in('id', questionIds);
+          } else {
+            // No history matches, return empty
+            data = [];
+            setQuestions([]);
+            setLoading(false);
+            return;
+          }
+        }
 
         if (filters.banca && filters.banca !== 'all') {
           query = query.eq('banca', filters.banca);

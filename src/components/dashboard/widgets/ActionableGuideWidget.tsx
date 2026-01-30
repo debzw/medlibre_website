@@ -68,9 +68,12 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
     // --- ACTIVE STATE ---
     return (
         <DashboardWidget
+            title="Direcionamento Estratégico"
+            icon={Target}
             colSpan={2}
             className="group relative border-border/5 bg-card/20 p-0 overflow-hidden"
             loading={loading}
+            noPadding={true}
         >
             {/* Unified Soft Background Gradients */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -81,8 +84,8 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
             <div className="flex flex-col md:flex-row h-full min-h-[400px] relative z-10">
 
                 {/* LEFT SIDE: PRIMARY ACTION (Weak Spot) */}
-                <div className="flex-1 p-10 flex flex-col justify-center relative">
-                    <div className="flex items-center gap-2.5 text-destructive bg-destructive/10 w-fit px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] ring-1 ring-destructive/20 mb-8 backdrop-blur-md">
+                <div className="flex-1 p-8 flex flex-col justify-center relative">
+                    <div className="flex items-center gap-2.5 text-destructive bg-destructive/10 w-fit px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] ring-1 ring-destructive/20 mb-6 backdrop-blur-md">
                         <Target className="h-3.5 w-3.5" />
                         Prioridade Máxima
                     </div>
@@ -120,7 +123,7 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
                 </div>
 
                 {/* RIGHT SIDE: SECONDARY INFO (Strong Spot + Tip) */}
-                <div className="md:w-[340px] p-10 flex flex-col justify-between relative bg-muted/[0.03] md:bg-transparent backdrop-blur-3xl md:backdrop-blur-none">
+                <div className="md:w-[340px] p-8 flex flex-col gap-6 relative bg-muted/[0.03] md:bg-transparent backdrop-blur-3xl md:backdrop-blur-none justify-center">
                     {/* Vertical Divider Line */}
                     <div className="hidden md:block absolute left-0 top-1/2 -translate-y-1/2 h-3/5 w-px bg-gradient-to-b from-transparent via-border/50 to-transparent" />
 

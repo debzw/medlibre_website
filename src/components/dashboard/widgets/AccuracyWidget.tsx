@@ -20,7 +20,7 @@ export function AccuracyWidget({ correct, total, loading }: AccuracyWidgetProps)
 
     return (
         <DashboardWidget title="Precisão Global" icon={Target} loading={loading}>
-            <div className="flex h-full flex-col items-center justify-center -mt-4">
+            <div className="flex h-full flex-col items-center justify-center -mt-2">
                 <div className="relative h-44 w-full flex items-center justify-center">
                     {/* Background Glow based on performance */}
                     <div

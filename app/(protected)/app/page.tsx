@@ -46,6 +46,8 @@ export default function QuestionsPage() {
         setHistoryIndex(-1);
     }, [searchParams]);
 
+    const status = searchParams.get('status') as 'all_answered' | 'correct' | 'incorrect' | null;
+
     const { options, loading: optionsLoading } = useFilterOptions();
     const { questions: allQuestions, loading: questionsLoading, error: questionsError, refetch } = useQuestions({
         banca: selectedBanca,
@@ -54,7 +56,8 @@ export default function QuestionsPage() {
         especialidade: selectedEspecialidade,
         tema: selectedTemaUI,
         search: searchParams.get('search') || undefined,
-        hideAnswered: hideAnswered
+        hideAnswered: status ? false : hideAnswered,
+        status: status || undefined
     });
 
     const { userType, canAnswerMore, incrementUsage, getRemainingQuestions } = useAuthContext();
@@ -65,13 +68,14 @@ export default function QuestionsPage() {
 
     const questions = useMemo(() => {
         const historyIds = new Set(questionHistory);
-        if (!hideAnswered) return allQuestions;
+        // If viewing status-based history, don't filter out answered questions
+        if (status || !hideAnswered) return allQuestions;
         return allQuestions.filter(q =>
             !checkIfAnswered(q.id) ||
             q.id === currentQuestionId ||
             historyIds.has(q.id)
         );
-    }, [allQuestions, hideAnswered, checkIfAnswered, currentQuestionId, questionHistory]);
+    }, [allQuestions, hideAnswered, checkIfAnswered, currentQuestionId, questionHistory, status]);
 
     const showInterstitialAds = (
         (userType === 'guest' && AD_CONFIG.interstitial.enabledForGuest) ||
@@ -199,7 +203,24 @@ export default function QuestionsPage() {
                 <div className="flex-1 space-y-6">
                     {/* Hero section */}
                     <div className="text-center py-8 animate-fade-in">
-                        {selectedCampo !== 'all' ? (
+                        {status ? (
+                            <div className="flex flex-col items-center">
+                                <div className="flex items-center gap-2 px-4 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-[0.2em] mb-4">
+                                    <TrendingUp className="h-3 w-3" />
+                                    {status === 'correct' ? 'Seus Acertos' : status === 'incorrect' ? 'Suas Falhas' : 'Questões Respondidas'}
+                                </div>
+                                <h1 className="text-4xl font-black mb-3 tracking-tighter">
+                                    Histórico de Performance
+                                </h1>
+                                <p className="text-lg text-muted-foreground max-w-2xl mx-auto flex items-center gap-2">
+                                    {status === 'correct'
+                                        ? 'Revisando as questões que você já domina'
+                                        : status === 'incorrect'
+                                            ? 'Focando no que ainda precisa ser superado'
+                                            : 'Analise o seu progresso na plataforma'}
+                                </p>
+                            </div>
+                        ) : selectedCampo !== 'all' ? (
                             <div className="flex flex-col items-center">
                                 <div className="flex items-center gap-2 px-4 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-[0.2em] mb-4">
                                     <TrendingUp className="h-3 w-3" />
@@ -282,11 +303,21 @@ export default function QuestionsPage() {
                         <LimitReachedCard />
                     ) : questions.length === 0 ? (
                         <EmptyState
-                            title={hideAnswered ? "Você resolveu todas as questões deste bloco!" : "Nenhuma questão encontrada"}
-                            description={allQuestions.length > 0 && hideAnswered
-                                ? `Você já resolveu as ${allQuestions.length} questões carregadas. Desative o filtro 'Ocultar respondidas' para revê-las.`
-                                : "Tente ajustar os filtros para encontrar mais questões."}
-                            action={hideAnswered ? {
+                            title={status ? "Acabou a revisão?" : (hideAnswered ? "Você resolveu todas as questões deste bloco!" : "Nenhuma questão encontrada")}
+                            description={status
+                                ? "Você revisou todas as questões filtradas. Que tal praticar com conteúdos novos?"
+                                : (allQuestions.length > 0 && hideAnswered
+                                    ? `Você já resolveu as ${allQuestions.length} questões carregadas. Desative o filtro 'Ocultar respondidas' para revê-las.`
+                                    : "Tente ajustar os filtros para encontrar mais questões.")
+                            }
+                            action={status ? {
+                                label: "Ver Questões Novas",
+                                onClick: () => {
+                                    const params = new URLSearchParams();
+                                    router.push(`?${params.toString()}`, { scroll: false });
+                                    resetFilters();
+                                }
+                            } : hideAnswered ? {
                                 label: "Ver Questões Respondidas",
                                 onClick: () => setHideAnswered(false)
                             } : {

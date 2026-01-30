@@ -9,6 +9,7 @@ interface DashboardWidgetProps {
     children: ReactNode;
     className?: string;
     loading?: boolean;
+    noPadding?: boolean;
     colSpan?: 1 | 2 | 3 | 4;
     rowSpan?: 1 | 2;
     onClick?: () => void;
@@ -20,6 +21,7 @@ export function DashboardWidget({
     children,
     className,
     loading = false,
+    noPadding = false,
     colSpan = 1,
     rowSpan = 1,
     onClick
@@ -56,14 +58,17 @@ export function DashboardWidget({
 
             {/* Header */}
             {(title || Icon) && (
-                <div className="flex items-center gap-4 px-8 pt-8 pb-4 transition-colors relative z-10">
+                <div className={cn(
+                    "flex items-center gap-4 transition-colors relative z-10",
+                    noPadding ? "px-6 pt-5 pb-1" : "px-6 pt-6 pb-2"
+                )}>
                     {Icon && (
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/5 text-primary shadow-[inset_0_0_0_1px_rgba(var(--primary-rgb),0.1)] group-hover:bg-primary/10 group-hover:scale-105 transition-all duration-500">
                             <Icon className="h-5 w-5" />
                         </div>
                     )}
                     {title && (
-                        <h3 className="text-lg font-black tracking-tight text-foreground/70 group-hover:text-foreground transition-colors uppercase text-[11px] tracking-[0.1em]">
+                        <h3 className="font-bold tracking-tight text-foreground transition-colors uppercase text-sm tracking-[0.15em] opacity-80 group-hover:opacity-100">
                             {title}
                         </h3>
                     )}
@@ -71,7 +76,10 @@ export function DashboardWidget({
             )}
 
             {/* Body */}
-            <div className="flex-1 px-8 pb-8 pt-2 relative z-10">{children}</div>
+            <div className={cn(
+                "flex-1 relative z-10",
+                noPadding ? "p-0" : "px-6 pb-6 pt-2"
+            )}>{children}</div>
 
             {/* Subtle glow effects */}
             <div className="pointer-events-none absolute -right-32 -top-32 h-64 w-64 rounded-full bg-primary/5 blur-[100px] transition-opacity duration-1000 group-hover:opacity-100 opacity-40 dark:opacity-60" />

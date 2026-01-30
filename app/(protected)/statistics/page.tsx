@@ -25,9 +25,6 @@ import { SpecialtyPerformanceWidget } from '@/components/dashboard/widgets/Speci
 import { BancaPerformanceWidget } from '@/components/dashboard/widgets/BancaPerformanceWidget';
 import { RecentActivityWidget } from '@/components/dashboard/widgets/RecentActivityWidget';
 import { StreakWidget } from '@/components/dashboard/widgets/StreakWidget';
-import { ThemeWeaknessWidget } from '@/components/dashboard/widgets/ThemeWeaknessWidget';
-import { SRSWidget } from '@/components/dashboard/widgets/SRSWidget';
-import { MasteryWidget } from '@/components/dashboard/widgets/MasteryWidget';
 
 export default function StatisticsPage() {
     const router = useRouter();
@@ -173,18 +170,6 @@ export default function StatisticsPage() {
 
                     <div className="md:col-span-1 xl:col-span-1 md:row-span-2 h-full">
                         <BancaPerformanceWidget byBanca={stats.byBanca} loading={isLoading} />
-                    </div>
-
-                    <div className="md:col-span-1 xl:col-span-2 md:row-span-1 h-full">
-                        <ThemeWeaknessWidget loading={isLoading} />
-                    </div>
-
-                    <div className="md:col-span-1 xl:col-span-1 md:row-span-1 h-full">
-                        <SRSWidget loading={isLoading} />
-                    </div>
-
-                    <div className="md:col-span-1 xl:col-span-1 md:row-span-1 h-full">
-                        <MasteryWidget loading={isLoading} />
                     </div>
 
                 </motion.div>

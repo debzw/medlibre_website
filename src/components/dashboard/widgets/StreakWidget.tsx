@@ -12,7 +12,7 @@ interface StreakWidgetProps {
 export function StreakWidget({ streakDays, totalAnswered, timeFilterLabel, loading }: StreakWidgetProps) {
     return (
         <DashboardWidget title="Consistência" icon={Flame} loading={loading}>
-            <div className="flex flex-col items-center justify-center h-full -mt-2">
+            <div className="flex flex-col items-center justify-center h-full">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-4">
                     consistência é a chave
                 </p>
