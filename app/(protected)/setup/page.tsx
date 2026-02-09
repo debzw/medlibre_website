@@ -54,10 +54,33 @@ export default function FocusedSetupPage() {
 
 
     const handleStart = () => {
+        // Intelligent Enter: If there's a very clear category match, select it instead of raw search
+        if (!hasFilters && searchQuery.length >= 3) {
+            const allOptions = [
+                ...aliveOptions.bancas.map(i => ({ type: 'banca' as const, value: i[0], score: i[2] })),
+                ...aliveOptions.areas.map(i => ({ type: 'area' as const, value: i[0], score: i[2] })),
+                ...aliveOptions.especialidades.map(i => ({ type: 'especialidade' as const, value: i[0], score: i[2] })),
+                ...aliveOptions.temas.map(i => ({ type: 'tema' as const, value: i[0], score: i[2] })),
+            ];
+
+            const bestMatch = allOptions
+                .filter(opt => opt.score >= 80) // High confidence
+                .sort((a, b) => b.score - a.score)[0];
+
+            if (bestMatch) {
+                if (bestMatch.type === 'banca') setSelectedBanca(bestMatch.value);
+                if (bestMatch.type === 'area') setSelectedArea(bestMatch.value);
+                if (bestMatch.type === 'especialidade') setSelectedEspecialidade(bestMatch.value);
+                if (bestMatch.type === 'tema') setSelectedTema(bestMatch.value);
+                setSearchQuery('');
+                return; // Selection will trigger a re-render and user can start then
+            }
+        }
+
         const params = new URLSearchParams();
         if (selectedBanca) params.append('banca', selectedBanca);
         if (selectedAno) params.append('ano', selectedAno.toString());
-        if (selectedArea) params.append('area', selectedArea);
+        if (selectedArea) params.append('campo', selectedArea);
         if (selectedEspecialidade) params.append('especialidade', selectedEspecialidade);
         if (selectedTema) params.append('tema', selectedTema);
 

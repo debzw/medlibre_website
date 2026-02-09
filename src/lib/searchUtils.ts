@@ -1,4 +1,47 @@
 /**
+ * Normalizes text by removing accents and converting to lowercase.
+ * Example: "Cirúrgica" → "cirurgica"
+ */
+export function normalize(text: string | null | undefined): string {
+    if (!text) return '';
+    return text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
+/**
+ * Extracts common medical acronyms from text.
+ * Example: "Ginecologia e Obstetrícia" → ["GO"]
+ */
+export function extractAcronyms(text: string): string[] {
+    const words = text.split(/[\s-]+/).filter(w => w.length > 0);
+
+    // Single acronym from initials
+    if (words.length >= 2) {
+        const acronym = words.map(w => w[0]).join('').toUpperCase();
+        return [acronym];
+    }
+
+    return [];
+}
+
+/**
+ * Known medical acronyms mapping
+ */
+export const KNOWN_ACRONYMS: Record<string, string[]> = {
+    'PA': ['Pediatria', 'Pneumologia'],
+    'GO': ['Ginecologia', 'Obstetrícia'],
+    'UTI': ['Unidade de Terapia Intensiva'],
+    'AVC': ['Acidente Vascular Cerebral'],
+    'IAM': ['Infarto Agudo do Miocárdio'],
+    'DM': ['Diabetes Mellitus'],
+    'HAS': ['Hipertensão Arterial Sistêmica'],
+    'TEP': ['Tromboembolismo Pulmonar'],
+    'ICC': ['Insuficiência Cardíaca Congestiva'],
+};
+
+/**
  * Calculates the Levenshtein distance between two strings.
  * Used for fuzzy matching to handle typos.
  */
@@ -35,8 +78,8 @@ export function levenshteinDistance(a: string, b: string): number {
  * A match is found if the query is a substring OR if the edit distance is small enough.
  */
 export function fuzzyMatch(text: string, query: string): boolean {
-    text = text.toLowerCase();
-    query = query.toLowerCase().trim();
+    text = normalize(text);
+    query = normalize(query.trim());
 
     if (!query) return true;
     if (text.includes(query)) return true;
@@ -44,32 +87,21 @@ export function fuzzyMatch(text: string, query: string): boolean {
     const targetWords = text.split(/\s+/);
     const queryWords = query.split(/\s+/);
 
-    // Acronym check: check if initials of target words form the query
-    if (queryWords.length === 1 && query.length >= 2 && query.length <= 4) {
-        const initials = targetWords.map(w => w[0]).join('');
-        if (initials.includes(query)) return true;
-    }
-
+    // For each query word, check if it matches any target word with fuzzy logic
     return queryWords.every(qWord => {
-        // Exact substring match check for each word
-        if (text.includes(qWord)) return true;
+        // Proportional threshold: allow 20% errors (stricter than 25% to avoid false positives like cirurgia->preventiva)
+        const threshold = Math.max(1, Math.floor(qWord.length * 0.20));
 
-        // Stricter dynamic threshold
-        let threshold = 0;
-        if (qWord.length >= 4 && qWord.length <= 6) threshold = 1;
-        if (qWord.length > 6) threshold = 2;
-
-        if (threshold === 0) return false;
-
-        // Fuzzy word matching
         return targetWords.some(tWord => {
-            if (tWord.length < qWord.length - 1) return false;
+            // Exact match or substring
+            if (tWord === qWord || tWord.includes(qWord)) return true;
 
-            // Only fuzzy match if the first letter is the same (standard UX optimization)
-            if (tWord[0] !== qWord[0]) return false;
+            // Prefix match (e.g., "cardio" matches "cardiologia")
+            if (tWord.startsWith(qWord) && qWord.length >= 3) return true;
 
-            const dist = levenshteinDistance(tWord.substring(0, qWord.length + 1), qWord);
-            return dist <= threshold;
+            // Fuzzy match with proportional threshold
+            const distance = levenshteinDistance(tWord, qWord);
+            return distance <= threshold;
         });
     });
 }
@@ -80,8 +112,8 @@ export function fuzzyMatch(text: string, query: string): boolean {
 export function getHighlightedParts(text: string, query: string): { text: string; highlight: boolean }[] {
     if (!query) return [{ text, highlight: false }];
 
-    const lowerText = text.toLowerCase();
-    const queryWords = query.toLowerCase().trim().split(/\s+/).filter(w => w.length > 0);
+    const lowerText = normalize(text);
+    const queryWords = normalize(query.trim()).split(/\s+/).filter(w => w.length > 0);
 
     if (queryWords.length === 0) return [{ text, highlight: false }];
 

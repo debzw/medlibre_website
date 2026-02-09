@@ -289,6 +289,17 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["questions"]["Row"][]
       }
+      increment_daily_usage: {
+        Args: Record<string, never>
+        Returns: number
+      }
+      get_user_stats: {
+        Args: {
+          p_user_id: string
+          p_time_filter?: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       user_tier: "free" | "paid"

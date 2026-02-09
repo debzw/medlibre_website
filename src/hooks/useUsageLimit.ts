@@ -23,18 +23,10 @@ export function useUsageLimit(
     if (isAuthenticated && userProfile) {
       // Logged in user
       setUserType(userProfile.tier as UserType);
-      
-      // Check if we need to reset daily count
+
+      // Check if we need to reset daily count (Visual only - Server handles actual reset on write)
       const today = new Date().toISOString().split('T')[0];
       if (userProfile.last_reset_date !== today) {
-        // Reset counter for new day
-        await supabase
-          .from('user_profiles')
-          .update({
-            questions_answered_today: 0,
-            last_reset_date: today,
-          })
-          .eq('id', userProfile.id);
         setQuestionsUsed(0);
       } else {
         setQuestionsUsed(userProfile.questions_answered_today);
@@ -55,7 +47,7 @@ export function useUsageLimit(
       if (stored) {
         const usage: GuestUsage = JSON.parse(stored);
         const today = new Date().toISOString().split('T')[0];
-        
+
         // Reset if it's a new day
         if (usage.lastResetDate !== today) {
           const newUsage: GuestUsage = {
@@ -80,19 +72,28 @@ export function useUsageLimit(
   };
 
   const incrementUsage = useCallback(async () => {
-    const newCount = questionsUsed + 1;
-    setQuestionsUsed(newCount);
-
     if (isAuthenticated && userProfile) {
-      // Update in database for logged in users
-      await supabase
-        .from('user_profiles')
-        .update({
-          questions_answered_today: newCount,
-        })
-        .eq('id', userProfile.id);
+      try {
+        const { data: newCount, error } = await supabase.rpc('increment_daily_usage');
+
+        if (error) {
+          console.error('Error incrementing usage:', error);
+          return;
+        }
+
+        if (typeof newCount === 'number') {
+          setQuestionsUsed(newCount);
+
+          // Update local profile state to reflect the change immediately
+          // Note: AuthContext handles profile updates
+        }
+      } catch (err) {
+        console.error('Unexpected error incrementing usage:', err);
+      }
     } else {
       // Update localStorage for guests
+      const newCount = questionsUsed + 1;
+      setQuestionsUsed(newCount);
       const today = new Date().toISOString().split('T')[0];
       const newUsage: GuestUsage = {
         questionsAnswered: newCount,

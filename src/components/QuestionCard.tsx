@@ -114,7 +114,7 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
             {question.ano}
           </Badge>
           <Badge variant="outline" className="bg-secondary">
-            {question.campo_medico}
+            {question.output_grande_area}
           </Badge>
           {historyEntry && (
             <Badge

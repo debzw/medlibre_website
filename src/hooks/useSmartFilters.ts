@@ -1,7 +1,23 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { fuzzyMatch } from '@/lib/searchUtils';
+import { fuzzyMatch, normalize, extractAcronyms, KNOWN_ACRONYMS } from '@/lib/searchUtils';
+
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+
+    return debouncedValue;
+}
 
 export type Combination = [string, number, string, string, string, number]; // [banca, ano, especialidade, grande_area, tema, q_count]
 
@@ -21,6 +37,7 @@ export const useSmartFilters = () => {
     const [selectedEspecialidade, setSelectedEspecialidade] = useState<string | null>(null);
     const [selectedTema, setSelectedTema] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebounce(searchQuery, 150);
 
     const { data, isLoading } = useQuery({
         queryKey: ['question-metadata-summary'],
@@ -37,36 +54,28 @@ export const useSmartFilters = () => {
     // Helper to calculate match score for sorting
     const getMatchScore = (text: string, queryParts: string[]) => {
         if (!text || queryParts.length === 0) return 0;
-        const lowerText = text.toLowerCase();
+        const lowerText = normalize(text);
+        const normalizedQueryParts = queryParts.map(p => normalize(p));
 
         let score = 0;
+        const fullQuery = normalizedQueryParts.join(' ');
 
-        // Exact/Prefix match bonus for the full query
-        const fullQuery = queryParts.join(' ');
+        // Exact match is top priority
         if (lowerText === fullQuery) return 100;
+
+        // Starts with full query
         if (lowerText.startsWith(fullQuery)) return 90;
 
-        // Word match scoring
-        const words = lowerText.split(/[\s-]+/); // Split by space or hyphen
+        // Contain full query
+        if (lowerText.includes(fullQuery)) score += 40;
 
-        for (const part of queryParts) {
-            let partMatched = false;
-            // Check against words
+        // Word-based scoring (Simple substring matches)
+        const words = lowerText.split(/[\s-]+/);
+        for (const part of normalizedQueryParts) {
             for (const word of words) {
-                if (word === part) {
-                    score += 50;
-                    partMatched = true;
-                } else if (word.startsWith(part)) {
-                    score += 30;
-                    partMatched = true;
-                } else if (part.length >= 3 && word.includes(part)) {
-                    score += 10;
-                    partMatched = true;
-                }
-            }
-            // Fallback to fuzzy if no direct word match
-            if (!partMatched && fuzzyMatch(text, part)) {
-                score += 5;
+                if (word === part) score += 30;
+                else if (word.startsWith(part)) score += 20;
+                else if (part.length >= 3 && word.includes(part)) score += 10;
             }
         }
 
@@ -76,34 +85,23 @@ export const useSmartFilters = () => {
     // Helper to check if a combination matches the search query
     const matchesSearch = (combination: Combination, query: string) => {
         if (!query) return true;
-        const lowerQuery = query.toLowerCase().trim();
-        if (!lowerQuery) return true;
+        const normalizedQuery = normalize(query.trim());
+        if (!normalizedQuery) return true;
 
         const [banca, _, especialidade, area, tema] = combination;
-        const queryParts = lowerQuery.split(/\s+/).filter(p => p.length > 0);
+        const queryParts = normalizedQuery.split(/\s+/).filter(p => p.length > 0);
 
-        // All query parts must match SOMETHING in the combination
+        // Simple Substring matching for any field
         return queryParts.every(part => {
-            // 1. Strict checks for short terms (< 3 chars)
-            // Reduces noise like "PA" matching inside "Hepatorrenal"
-            if (part.length < 3) {
-                return [banca, especialidade, area, tema].some(field => {
-                    if (!field) return false;
-                    // Must start a word
-                    return field.toLowerCase().split(/[\s-]+/).some(w => w.startsWith(part));
-                });
-            }
-
-            // 2. Normal fuzzy checks for longer terms
-            const searchableText = `${banca} ${especialidade} ${area} ${tema}`;
-            return fuzzyMatch(searchableText, part);
+            const normalizedText = normalize(`${banca} ${especialidade} ${area} ${tema}`);
+            return normalizedText.includes(part);
         });
     };
 
     // Logic to calculate "Alive" options based on current selections AND search query
     // Includes scoring to prioritize relevant matches
     const aliveOptions = useMemo(() => {
-        const queryParts = searchQuery.toLowerCase().trim().split(/\s+/).filter(p => p.length > 0);
+        const queryParts = debouncedSearchQuery.toLowerCase().trim().split(/\s+/).filter(p => p.length > 0);
 
         // Maps store { count, score }
         const bancas = new Map<string, { count: number; score: number }>();
@@ -112,11 +110,16 @@ export const useSmartFilters = () => {
         const especialidades = new Map<string, { count: number; score: number }>();
         const temas = new Map<string, { count: number; score: number }>();
 
+        const hasQuery = debouncedSearchQuery.length > 0;
+
+        // Cache for scores to avoid redundant fuzzy matching
+        const scoreCache = new Map<string, number>();
+
         combinations.forEach((combo) => {
             const [banca, ano, especialidade, area, tema, count] = combo;
 
             // Global Filter Check
-            if (!matchesSearch(combo, searchQuery)) return;
+            if (!matchesSearch(combo, debouncedSearchQuery)) return;
 
             // Cross-Filter Checks
             const matchesBanca = !selectedBanca || banca === selectedBanca;
@@ -125,10 +128,21 @@ export const useSmartFilters = () => {
             const matchesEspecialidade = !selectedEspecialidade || especialidade === selectedEspecialidade;
             const matchesTema = !selectedTema || tema === selectedTema;
 
-            // Helper to update map with score tracking
+            // Helper to update map with score tracking and caching
             const updateMap = (map: Map<any, any>, key: any, textForScore: string | null) => {
                 const current = map.get(key) || { count: 0, score: 0 };
-                const itemScore = textForScore ? getMatchScore(textForScore, queryParts) : 0;
+
+                let itemScore = 0;
+                if (textForScore) {
+                    const cached = scoreCache.get(textForScore);
+                    if (cached !== undefined) {
+                        itemScore = cached;
+                    } else {
+                        itemScore = getMatchScore(textForScore, queryParts);
+                        scoreCache.set(textForScore, itemScore);
+                    }
+                }
+
                 map.set(key, {
                     count: current.count + count,
                     score: Math.max(current.score, itemScore)
@@ -160,7 +174,11 @@ export const useSmartFilters = () => {
 
         const formatOutput = (map: Map<any, { count: number, score: number }>) =>
             // Returning [key, count, score]
-            Array.from(map.entries()).sort(relevanceSorter).map(([key, val]) => [key, val.count, val.score] as [any, number, number]);
+            // If searching, only return items with some match score to avoid category contamination
+            Array.from(map.entries())
+                .filter(([_, val]) => !hasQuery || val.score > 0)
+                .sort(relevanceSorter)
+                .map(([key, val]) => [key, val.count, val.score] as [any, number, number]);
 
         return {
             bancas: formatOutput(bancas),
@@ -170,13 +188,13 @@ export const useSmartFilters = () => {
             especialidades: formatOutput(especialidades),
             temas: formatOutput(temas),
         };
-    }, [combinations, selectedBanca, selectedAno, selectedArea, selectedEspecialidade, selectedTema, searchQuery]);
+    }, [combinations, selectedBanca, selectedAno, selectedArea, selectedEspecialidade, selectedTema, debouncedSearchQuery]);
 
     const totalFilteredQuestions = useMemo(() => {
         return combinations.reduce((acc, combo) => {
             const [b, a, e, ar, t, count] = combo;
             if (
-                matchesSearch(combo, searchQuery) &&
+                matchesSearch(combo, debouncedSearchQuery) &&
                 (!selectedBanca || b === selectedBanca) &&
                 (!selectedAno || a === selectedAno) &&
                 (!selectedArea || ar === selectedArea) &&
@@ -187,7 +205,7 @@ export const useSmartFilters = () => {
             }
             return acc;
         }, 0);
-    }, [combinations, selectedBanca, selectedAno, selectedArea, selectedEspecialidade, selectedTema, searchQuery]);
+    }, [combinations, selectedBanca, selectedAno, selectedArea, selectedEspecialidade, selectedTema, debouncedSearchQuery]);
 
     const reset = () => {
         setSelectedBanca(null);
@@ -226,6 +244,7 @@ export const useSmartFilters = () => {
         totalFilteredQuestions,
         searchQuery,
         setSearchQuery,
+        debouncedSearchQuery,
         stats: data?.stats,
         reset,
     };
