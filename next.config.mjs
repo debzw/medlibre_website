@@ -1,3 +1,9 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // Enable React strict mode for better development experience
@@ -32,6 +38,12 @@ const nextConfig = {
 
     // Webpack configuration for compatibility
     webpack: (config, { isServer }) => {
+        // Add explicit alias for @/ to resolve to src/
+        config.resolve.alias = {
+            ...config.resolve.alias,
+            '@': path.resolve(__dirname, 'src'),
+        };
+
         config.resolve.fallback = {
             ...config.resolve.fallback,
             fs: false,
