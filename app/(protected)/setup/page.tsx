@@ -259,18 +259,18 @@ export default function FocusedSetupPage() {
                         onSelect={setSelectedAno}
                     />
                 </div>
-            </div>
 
-            {/* Bottom Action Bar */}
-            <div className="sticky bottom-8 left-0 right-0 flex justify-center mt-12 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500 z-0">
-                <Button
-                    size="lg"
-                    onClick={handleStart}
-                    disabled={(totalFilteredQuestions === 0 && searchQuery.length < 3) || (!hasFilters && searchQuery.length < 3)}
-                    className="rounded-xl px-10 h-16 text-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                >
-                    {(searchQuery.length > 2 && totalFilteredQuestions === 0) ? 'Buscar Questão' : 'Começar Agora'}
-                </Button>
+                {/* Bottom Action Bar - Now inside the filter block */}
+                <div className="flex justify-center pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-500">
+                    <Button
+                        size="lg"
+                        onClick={handleStart}
+                        disabled={(totalFilteredQuestions === 0 && searchQuery.length < 3) || (!hasFilters && searchQuery.length < 3)}
+                        className="rounded-xl px-10 h-16 text-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    >
+                        {(searchQuery.length > 2 && totalFilteredQuestions === 0) ? 'Buscar Questão' : 'Começar Agora'}
+                    </Button>
+                </div>
             </div>
 
             {/* Background Micro-decoration */}
