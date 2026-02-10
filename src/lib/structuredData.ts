@@ -11,7 +11,7 @@ export const organizationSchema = {
     ],
     "contactPoint": {
         "@type": "ContactPoint",
-        "email": "medlibre64@gmail.com",
+        "email": "institucional@medlibre.com.br",
         "contactType": "Customer Support"
     }
 };

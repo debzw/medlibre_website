@@ -24,7 +24,7 @@ export default function SACPage() {
                     <p className="text-muted-foreground">
                         Se você não encontrou o que procurava, nossa equipe está pronta para ajudar.
                     </p>
-                    <p className="text-primary font-bold text-lg">medlibre64@gmail.com</p>
+                    <p className="text-primary font-bold text-lg">institucional@medlibre.com.br</p>
                 </div>
             </div>
         </div>

@@ -103,7 +103,7 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
   const optionLabels = ['A', 'B', 'C', 'D', 'E'];
 
   return (
-    <div className="card-elevated p-6 space-y-6 animate-slide-up">
+    <div className="card-elevated p-4 sm:p-6 space-y-4 sm:space-y-6 animate-slide-up">
       {/* Header with metadata */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -155,16 +155,16 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
       </div>
 
       {/* Question text and Image between statement and options */}
-      <div className="space-y-4">
-        <p className="text-lg leading-relaxed text-foreground">{question.enunciado}</p>
+      <div className="space-y-3 sm:space-y-4">
+        <p className="text-base sm:text-lg leading-relaxed text-foreground">{question.enunciado}</p>
 
         {/* Image if present (using status_imagem == 1 or existence of image urls) */}
         {(question.status_imagem === 1 || question.imagem_url || question.referencia_imagem) && (
-          <div className="rounded-xl overflow-hidden border border-border bg-secondary/30">
+          <div className="rounded-xl overflow-hidden border border-border bg-secondary/30 -mx-4 sm:mx-0">
             <img
               src={question.imagem_url || question.referencia_imagem || ''}
               alt="Imagem da questão"
-              className="w-full max-h-80 object-contain"
+              className="w-full max-h-60 sm:max-h-80 object-contain"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
@@ -182,13 +182,13 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
               key={index}
               onClick={() => handleOptionClick(index)}
               disabled={!canAnswer || showResult}
-              className={getOptionClass(index)}
+              className={cn(getOptionClass(index), "p-3 sm:p-4")}
             >
-              <div className="flex items-start gap-3">
-                <span className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-sm font-semibold shrink-0">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0">
                   {optionLabels[index]}
                 </span>
-                <span className="text-left flex-1 pt-1">{opcao}</span>
+                <span className="text-left flex-1 pt-0.5 sm:pt-1 text-sm sm:text-base">{opcao}</span>
                 {getOptionIcon(index)}
               </div>
             </button>
@@ -216,12 +216,12 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
 
           {/* Resolution/Explanation */}
           {question.output_explicacao && (
-            <div className="p-6 rounded-xl bg-primary/5 border border-primary/10 space-y-3">
-              <h4 className="font-semibold text-primary flex items-center gap-2">
+            <div className="p-4 sm:p-6 rounded-xl bg-primary/5 border border-primary/10 space-y-2 sm:space-y-3">
+              <h4 className="text-sm sm:text-base font-semibold text-primary flex items-center gap-2">
                 <Check className="w-4 h-4" />
                 Resolução comentada
               </h4>
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm sm:text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">
                 {question.output_explicacao}
               </p>
             </div>

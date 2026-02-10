@@ -202,17 +202,17 @@ export default function QuestionsPage() {
                 {/* Main content */}
                 <div className="flex-1 space-y-6">
                     {/* Hero section */}
-                    <div className="text-center py-8 animate-fade-in">
+                    <div className="text-center py-4 sm:py-8 animate-fade-in px-2">
                         {status ? (
                             <div className="flex flex-col items-center">
-                                <div className="flex items-center gap-2 px-4 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-[0.2em] mb-4">
+                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] mb-3 sm:mb-4">
                                     <TrendingUp className="h-3 w-3" />
                                     {status === 'correct' ? 'Seus Acertos' : status === 'incorrect' ? 'Suas Falhas' : 'Questões Respondidas'}
                                 </div>
-                                <h1 className="text-4xl font-black mb-3 tracking-tighter">
+                                <h1 className="text-2xl sm:text-4xl font-black mb-2 sm:mb-3 tracking-tighter">
                                     Histórico de Performance
                                 </h1>
-                                <p className="text-lg text-muted-foreground max-w-2xl mx-auto flex items-center gap-2">
+                                <p className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto flex items-center gap-2">
                                     {status === 'correct'
                                         ? 'Revisando as questões que você já domina'
                                         : status === 'incorrect'
@@ -222,23 +222,23 @@ export default function QuestionsPage() {
                             </div>
                         ) : selectedCampo !== 'all' ? (
                             <div className="flex flex-col items-center">
-                                <div className="flex items-center gap-2 px-4 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-black uppercase tracking-[0.2em] mb-4">
+                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] mb-3 sm:mb-4">
                                     <TrendingUp className="h-3 w-3" />
                                     Modo Focado Ativo
                                 </div>
-                                <h1 className="text-4xl font-black mb-3 tracking-tighter">
+                                <h1 className="text-2xl sm:text-4xl font-black mb-2 sm:mb-3 tracking-tighter">
                                     {selectedCampo}
                                 </h1>
-                                <p className="text-lg text-muted-foreground max-w-2xl mx-auto flex items-center gap-2">
-                                    Extraindo o seu melhor em uma área crítica
+                                <p className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto flex items-center gap-2">
+                                    Extraindo o seu melhor em uma área específica
                                 </p>
                             </div>
                         ) : (
                             <>
-                                <h1 className="text-4xl font-bold mb-3 tracking-tight">
+                                <h1 className="text-2xl sm:text-4xl font-bold mb-2 sm:mb-3 tracking-tight">
                                     Banco de Questões
                                 </h1>
-                                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                                <p className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto">
                                     Prepare-se para a residência médica com questões de provas anteriores
                                 </p>
                             </>
@@ -280,10 +280,14 @@ export default function QuestionsPage() {
 
                     {/* Progress indicator */}
                     {questions.length > 0 && (
-                        <div className="flex items-center justify-between text-sm text-muted-foreground animate-fade-in">
-                            <span>Questão {currentQuestionIndex + 1} de {questions.length}</span>
-                            <QuestionTimer ref={timerRef} />
-                            <span>{getRemainingQuestions() === Infinity ? 'Ilimitado' : `${getRemainingQuestions()} restantes hoje`}</span>
+                        <div className="flex flex-wrap items-center justify-between gap-y-2 text-[10px] sm:text-xs text-muted-foreground animate-fade-in px-1">
+                            <span className="bg-secondary/50 px-2 py-1 rounded-md">Questão {currentQuestionIndex + 1}/{questions.length}</span>
+                            <div className="flex items-center justify-center">
+                                <QuestionTimer ref={timerRef} />
+                            </div>
+                            <span className="bg-primary/5 text-primary px-2 py-1 rounded-md font-medium">
+                                {getRemainingQuestions() === Infinity ? 'Ilimitado' : `${getRemainingQuestions()} r.`}
+                            </span>
                         </div>
                     )}
 
@@ -338,28 +342,30 @@ export default function QuestionsPage() {
                                 canAnswer={canAnswerMore()}
                                 historyEntry={historyEntry}
                             />
-                            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 animate-fade-in shadow-sm rounded-xl py-2">
+                            <div className="flex justify-between items-center gap-4 animate-fade-in shadow-sm rounded-xl py-2">
                                 {historyIndex > 0 ? (
                                     <Button
-                                        size="lg"
+                                        size="default"
                                         variant="outline"
                                         onClick={handlePreviousQuestion}
-                                        className="gap-2 order-2 sm:order-1"
+                                        className="flex-1 sm:flex-none gap-2 h-11"
                                     >
                                         <ArrowLeft className="w-4 h-4" />
-                                        Questão Anterior
+                                        <span className="hidden sm:inline">Questão Anterior</span>
+                                        <span className="sm:hidden">Anterior</span>
                                     </Button>
                                 ) : (
-                                    <div className="hidden sm:block sm:flex-1 order-1" />
+                                    <div className="hidden sm:block sm:flex-1" />
                                 )}
 
                                 <Button
-                                    size="lg"
+                                    size="default"
                                     variant={isQuestionAnswered ? "default" : "secondary"}
                                     onClick={handleNextClick}
-                                    className="gap-2 order-1 sm:order-2"
+                                    className="flex-1 sm:flex-none gap-2 h-11"
                                 >
-                                    {isQuestionAnswered ? "Próxima Questão" : "Pular Questão"}
+                                    <span className="hidden sm:inline">{isQuestionAnswered ? "Próxima Questão" : "Pular Questão"}</span>
+                                    <span className="sm:hidden">{isQuestionAnswered ? "Próxima" : "Pular"}</span>
                                     <ArrowRight className="w-4 h-4" />
                                 </Button>
                             </div>

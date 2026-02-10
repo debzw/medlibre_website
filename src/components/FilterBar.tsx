@@ -33,7 +33,7 @@ export function FilterBar({
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
-    <div className="card-elevated p-4 animate-fade-in transition-all duration-300">
+    <div className="card-elevated p-3 sm:p-4 animate-fade-in transition-all duration-300">
       <div
         className="flex items-center justify-between cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}

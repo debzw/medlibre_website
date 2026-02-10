@@ -22,7 +22,7 @@ export const Footer = () => {
                         <a href="/sac" className="text-sm text-muted-foreground hover:text-primary transition-colors">SAC (FAQ)</a>
                         <a href="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">Política de Privacidade</a>
                         <a href="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">Blog</a>
-                        <a href="mailto:medlibre64@gmail.com" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contato</a>
+                        <a href="mailto:institucional@medlibre.com.br" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contato</a>
                     </div>
                 </div>
                 <div className="pt-8 border-t border-border/50 text-center text-sm text-muted-foreground">

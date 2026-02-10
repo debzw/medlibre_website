@@ -28,9 +28,9 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo and Navigation Group */}
         <div className="flex items-center gap-4 md:gap-8">
-          <Link href="/" className="flex items-center">
-            <img src="/logo_withname.svg" alt="medlibre" className="h-8 dark:hidden" />
-            <img src="/logo_withname_white.svg" alt="medlibre" className="h-8 hidden dark:block" />
+          <Link href="/" className="flex items-center shrink-0">
+            <img src="/logo_withname.svg" alt="medlibre" className="h-6 sm:h-8 dark:hidden" />
+            <img src="/logo_withname_white.svg" alt="medlibre" className="h-6 sm:h-8 hidden dark:block" />
           </Link>
 
           {/* Navigation links - desktop */}
@@ -100,34 +100,36 @@ export function Header() {
               </Link>
 
               {/* Mobile nav links */}
-              <div className="flex md:hidden items-center gap-1">
+              <div className="flex md:hidden items-center gap-0.5 sm:gap-1">
                 <Link href="/setup">
-                  <Button variant="ghost" size="icon">
-                    <Target className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Target className="w-5 h-5" />
                   </Button>
                 </Link>
                 <Link href="/app">
-                  <Button variant="ghost" size="icon">
-                    <Sparkles className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Sparkles className="w-5 h-5" />
                   </Button>
                 </Link>
                 <Link href="/statistics">
-                  <Button variant="ghost" size="icon">
-                    <BarChart3 className="w-4 h-4" />
-                  </Button>
-                </Link>
-                <Link href="/about">
-                  <Button variant="ghost" size="icon">
-                    <Info className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <BarChart3 className="w-5 h-5" />
                   </Button>
                 </Link>
               </div>
 
+              {/* Usage indicator for mobile - show only remaining number to save space */}
+              {showLimit && (
+                <div className="flex sm:hidden items-center justify-center w-8 h-8 rounded-full bg-secondary text-[10px] font-bold border border-primary/20">
+                  {remaining === Infinity ? '∞' : remaining}
+                </div>
+              )}
+
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={handleSignOut}
-                className="text-muted-foreground hover:text-foreground"
+                className="h-9 w-9 text-muted-foreground hover:text-foreground md:ml-2"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
@@ -135,32 +137,27 @@ export function Header() {
           ) : (
             <div className="flex items-center gap-1">
               {/* Mobile nav links for guests */}
-              <div className="flex md:hidden items-center gap-1">
+              <div className="flex md:hidden items-center gap-0.5 sm:gap-1">
                 <Link href="/setup">
-                  <Button variant="ghost" size="icon">
-                    <Target className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Target className="w-5 h-5" />
                   </Button>
                 </Link>
                 <Link href="/app">
-                  <Button variant="ghost" size="icon">
-                    <Sparkles className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <Sparkles className="w-5 h-5" />
                   </Button>
                 </Link>
                 <Link href="/statistics">
-                  <Button variant="ghost" size="icon">
-                    <BarChart3 className="w-4 h-4" />
-                  </Button>
-                </Link>
-                <Link href="/about">
-                  <Button variant="ghost" size="icon">
-                    <Info className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="h-9 w-9">
+                    <BarChart3 className="w-5 h-5" />
                   </Button>
                 </Link>
               </div>
               <Link href="/auth">
-                <Button variant="default" size="sm" className="btn-amber">
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Entrar
+                <Button variant="default" size="sm" className="btn-amber h-9 px-3">
+                  <LogIn className="w-4 h-4 mr-1.5 sm:mr-2" />
+                  <span className="text-xs sm:text-sm">Entrar</span>
                 </Button>
               </Link>
             </div>

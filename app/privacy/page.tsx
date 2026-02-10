@@ -10,8 +10,8 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-2xl font-semibold mb-3 text-primary">1. Introdução</h2>
           <p>
-            Bem-vindo ao MedLibre. Nós nos levamos a sério a sua privacidade e a proteção dos seus dados pessoais. 
-            Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e compartilhamos suas informações 
+            Bem-vindo ao MedLibre. Nós nos levamos a sério a sua privacidade e a proteção dos seus dados pessoais.
+            Esta Política de Privacidade descreve como coletamos, usamos, armazenamos e compartilhamos suas informações
             ao utilizar nossa plataforma, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
           </p>
         </section>
@@ -41,8 +41,8 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-2xl font-semibold mb-3 text-primary">4. Compartilhamento de Dados</h2>
           <p>
-            Não vendemos seus dados pessoais. Podemos compartilhar informações com prestadores de serviços terceiros 
-            estritamente para a operação da plataforma (ex: hospedagem, autenticação via Google, processamento de pagamentos), 
+            Não vendemos seus dados pessoais. Podemos compartilhar informações com prestadores de serviços terceiros
+            estritamente para a operação da plataforma (ex: hospedagem, autenticação via Google, processamento de pagamentos),
             sempre exigindo conformidade com a LGPD.
           </p>
         </section>
@@ -50,7 +50,7 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-2xl font-semibold mb-3 text-primary">5. Cookies</h2>
           <p>
-            Utilizamos cookies para melhorar sua experiência, lembrar suas preferências e analisar o tráfego. 
+            Utilizamos cookies para melhorar sua experiência, lembrar suas preferências e analisar o tráfego.
             Você pode gerenciar suas preferências de cookies através das configurações do seu navegador ou do nosso banner de consentimento.
           </p>
         </section>
@@ -70,7 +70,7 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-2xl font-semibold mb-3 text-primary">7. Segurança</h2>
           <p>
-            Adotamos medidas técnicas e administrativas aptas a proteger seus dados pessoais de acessos não autorizados 
+            Adotamos medidas técnicas e administrativas aptas a proteger seus dados pessoais de acessos não autorizados
             e de situações acidentais ou ilícitas de destruição, perda, alteração, comunicação ou difusão.
           </p>
         </section>
@@ -78,10 +78,10 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-2xl font-semibold mb-3 text-primary">8. Contato</h2>
           <p>
-            Para exercer seus direitos ou tirar dúvidas sobre esta Política de Privacidade, entre em contato conosco pelo e-mail: 
-            <a href="mailto:medlibre64@gmail.com" className="text-primary hover:underline ml-1">medlibre64@gmail.com</a>.
+            Para exercer seus direitos ou tirar dúvidas sobre esta Política de Privacidade, entre em contato conosco pelo e-mail:
+            <a href="mailto:institucional@medlibre.com.br" className="text-primary hover:underline ml-1">institucional@medlibre.com.br</a>.
           </p>
-        </section>
+        </section>''
       </div>
     </div>
   );
