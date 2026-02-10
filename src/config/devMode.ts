@@ -34,24 +34,30 @@ export const AD_CONFIG = {
 };
 
 // ============================================
-// Question Limit Configuration
+// Question & PDF Limit Configuration
 // ============================================
 export const LIMIT_CONFIG = {
   // Guest users (not logged in)
   guest: {
     enabled: true,
-    limit: 5, // Reduced from 10 to 5 per user request
+    limit: 5,
+    pdf_enabled: true,
+    pdf_limit: 0, // Guest can't export
   },
 
   // Free registered users
   free: {
     enabled: true,
     limit: 20,
+    pdf_enabled: true,
+    pdf_limit: 0, // Free can't export? User only asked for Premium limit, assuming Free is 0 or restricted
   },
 
   // Paid users
   paid: {
-    enabled: false, // Unlimited
+    enabled: false, // Unlimited questions
     limit: 1000,
+    pdf_enabled: true,
+    pdf_limit: 20, // Limit of 20 PDFs per day as requested
   },
 };

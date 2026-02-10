@@ -293,6 +293,10 @@ export type Database = {
         Args: Record<string, never>
         Returns: number
       }
+      increment_pdf_usage: {
+        Args: Record<string, never>
+        Returns: number
+      }
       get_user_stats: {
         Args: {
           p_user_id: string

@@ -3,7 +3,7 @@
 MedLibre é uma plataforma freemium de preparação para residência médica que prioriza a fluidez, clareza e foco do estudante.
 
 ## 1. Nome da Marca
-- **Nome:** medlibre
+- **Nome:** Medlibre
 - **Estilo:** Todo em minúsculas, transmitindo modernidade e acessibilidade.
 
 ## 2. Logotipo

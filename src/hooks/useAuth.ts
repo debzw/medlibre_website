@@ -140,9 +140,9 @@ export function useAuth() {
   };
 
   // Funções de login mantidas (mas não farão nada visualmente se DEV_MODE estiver travado)
-  const signInWithGoogle = async () => { if (DEV_MODE) return { error: null }; const redirectUrl = `${window.location.origin}/`; const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl } }); return { error }; };
+  const signInWithGoogle = async () => { if (DEV_MODE) return { error: null }; const redirectUrl = window.location.origin; const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl } }); return { error }; };
   const signInWithEmail = async (email: string, password: string) => { if (DEV_MODE) return { error: null }; const { error } = await supabase.auth.signInWithPassword({ email, password }); return { error }; };
-  const signUpWithEmail = async (email: string, password: string) => { if (DEV_MODE) return { error: null }; const redirectUrl = `${window.location.origin}/`; const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectUrl } }); return { error }; };
+  const signUpWithEmail = async (email: string, password: string) => { if (DEV_MODE) return { error: null }; const redirectUrl = window.location.origin; const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectUrl } }); return { error }; };
   const signOut = async () => {
     if (DEV_MODE) { alert("Você está no modo DEV (Hardcoded). Edite o useAuth.ts para sair."); return { error: null }; }
     const { error } = await supabase.auth.signOut(); return { error };

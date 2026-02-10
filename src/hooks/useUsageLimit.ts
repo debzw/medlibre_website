@@ -10,6 +10,7 @@ export function useUsageLimit(
   isAuthenticated: boolean
 ) {
   const [questionsUsed, setQuestionsUsed] = useState(0);
+  const [pdfsUsed, setPdfsUsed] = useState(0);
   const [userType, setUserType] = useState<UserType>('guest');
   const [loading, setLoading] = useState(true);
 
@@ -31,14 +32,17 @@ export function useUsageLimit(
       // Compare dates - if profile date is older than today, show 0 (will reset on next increment)
       if (profileResetDate < today) {
         setQuestionsUsed(0);
+        setPdfsUsed(0);
       } else {
         setQuestionsUsed(userProfile.questions_answered_today);
+        setPdfsUsed(userProfile.pdfs_exported_today || 0);
       }
     } else {
       // Guest user
       setUserType('guest');
       const guestUsage = getGuestUsage();
       setQuestionsUsed(guestUsage.questionsAnswered);
+      setPdfsUsed(0);
     }
 
     setLoading(false);
@@ -86,9 +90,6 @@ export function useUsageLimit(
 
         if (typeof newCount === 'number') {
           setQuestionsUsed(newCount);
-
-          // Update local profile state to reflect the change immediately
-          // Note: AuthContext handles profile updates
         }
       } catch (err) {
         console.error('Unexpected error incrementing usage:', err);
@@ -105,6 +106,25 @@ export function useUsageLimit(
       localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(newUsage));
     }
   }, [questionsUsed, isAuthenticated, userProfile]);
+
+  const incrementPdfUsage = useCallback(async () => {
+    if (isAuthenticated && userProfile) {
+      try {
+        const { data: newCount, error } = await supabase.rpc('increment_pdf_usage');
+
+        if (error) {
+          console.error('Error incrementing PDF usage:', error);
+          return;
+        }
+
+        if (typeof newCount === 'number') {
+          setPdfsUsed(newCount);
+        }
+      } catch (err) {
+        console.error('Unexpected error incrementing PDF usage:', err);
+      }
+    }
+  }, [isAuthenticated, userProfile]);
 
   const getLimit = (): number => {
     const config = LIMIT_CONFIG[userType];
@@ -124,13 +144,36 @@ export function useUsageLimit(
     return Math.max(0, config.limit - questionsUsed);
   };
 
+  const getPdfLimit = (): number => {
+    const config = LIMIT_CONFIG[userType];
+    if (!config.pdf_enabled) return Infinity;
+    return config.pdf_limit || 0;
+  };
+
+  const canExportPdf = (): boolean => {
+    const config = LIMIT_CONFIG[userType];
+    if (!config.pdf_enabled) return true;
+    return pdfsUsed < (config.pdf_limit || 0);
+  };
+
+  const getRemainingPdfs = (): number => {
+    const config = LIMIT_CONFIG[userType];
+    if (!config.pdf_enabled) return Infinity;
+    return Math.max(0, (config.pdf_limit || 0) - pdfsUsed);
+  };
+
   return {
     questionsUsed,
+    pdfsUsed,
     userType,
     loading,
     incrementUsage,
+    incrementPdfUsage,
     canAnswerMore,
+    canExportPdf,
     getRemainingQuestions,
+    getRemainingPdfs,
     getLimit,
+    getPdfLimit,
   };
 }

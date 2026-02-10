@@ -24,6 +24,7 @@ export interface UserProfile {
   id: string;
   tier: 'free' | 'paid';
   questions_answered_today: number;
+  pdfs_exported_today: number;
   last_reset_date: string;
   theme_preference: 'light' | 'dark' | null;
   preferred_banca: string | null;

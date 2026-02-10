@@ -82,7 +82,7 @@ export function Header() {
               {userType === 'paid' && (
                 <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
                   <Crown className="w-4 h-4" />
-                  <span>Premium</span>
+                  <span>Premium Beta</span>
                 </div>
               )}
 

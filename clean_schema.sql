@@ -48,7 +48,8 @@
   -- USER PROFILES TABLE
   CREATE TABLE public.user_profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    tier user_tier NOT NULL DEFAULT 'free',
+    tier user_tier NOT NULL DEFAULT 'paid', -- Default to paid during beta
+    tier_expiry TIMESTAMP WITH TIME ZONE DEFAULT '2026-04-01 00:00:00-03', -- Beta expiry
     questions_answered_today INT NOT NULL DEFAULT 0,
     last_reset_date DATE NOT NULL DEFAULT CURRENT_DATE,
     theme_preference TEXT CHECK (theme_preference IN ('light', 'dark')),
@@ -87,8 +88,8 @@
   CREATE OR REPLACE FUNCTION public.handle_new_user()
   RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
   BEGIN
-    INSERT INTO public.user_profiles (id, tier, questions_answered_today, last_reset_date, theme_preference)
-    VALUES (NEW.id, 'free', 0, CURRENT_DATE, 'dark');
+    INSERT INTO public.user_profiles (id, tier, questions_answered_today, last_reset_date, theme_preference, tier_expiry)
+    VALUES (NEW.id, 'paid', 0, CURRENT_DATE, 'dark', '2026-04-01 00:00:00-03');
     RETURN NEW;
   END; $$;
 
