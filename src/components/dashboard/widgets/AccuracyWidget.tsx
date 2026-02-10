@@ -56,8 +56,8 @@ export function AccuracyWidget({ correct, total, loading }: AccuracyWidgetProps)
                 </div>
                 <div className="mt-6 flex items-center gap-3 rounded-2xl bg-card/40 px-5 py-2.5 ring-1 ring-border/40 shadow-xl backdrop-blur-xl group/info hover:border-primary/20 transition-all">
                     <div className="h-2 w-2 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.2)]" style={{ backgroundColor: color }} />
-                    <p className="text-xs font-bold text-muted-foreground/80 group-hover:text-foreground transition-colors uppercase tracking-wider">
-                        {correct} <span className="text-muted-foreground/40 font-medium">/</span> {total} <span className="text-[10px] ml-1 opacity-60">QUESTÕES</span>
+                    <p className="text-xs font-medium text-muted-foreground/80 group-hover:text-foreground transition-colors uppercase tracking-wider">
+                        {correct} <span className="text-muted-foreground/40 font-normal">/</span> {total} <span className="text-[10px] ml-1 opacity-60">QUESTÕES</span>
                     </p>
                 </div>
             </div>

@@ -32,11 +32,10 @@ export function DashboardWidget({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
             className={cn(
-                "group relative flex h-full flex-col overflow-hidden rounded-[2.5rem] border transition-all duration-500",
-                "bg-card/30 border-border/40 backdrop-blur-2xl",
+                "group relative flex h-full flex-col overflow-hidden rounded-3xl border transition-all duration-500",
+                "bg-card/20 border-border/50 backdrop-blur-sm",
                 "hover:border-primary/30 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)]",
                 "dark:hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)]",
-                "before:absolute before:inset-0 before:p-[1px] before:rounded-[2.5rem] before:bg-gradient-to-b before:from-white/10 before:to-transparent before:pointer-events-none before:z-[-1]",
                 colSpan === 2 && "col-span-1 md:col-span-2",
                 colSpan === 3 && "col-span-1 md:col-span-3",
                 colSpan === 4 && "col-span-1 md:col-span-4",
@@ -46,9 +45,6 @@ export function DashboardWidget({
             )}
             onClick={onClick}
         >
-            {/* Inner Border Glow */}
-            <div className="absolute inset-0 rounded-[2.5rem] ring-1 ring-inset ring-white/5 pointer-events-none z-[1]" />
-
             {/* Loading Overlay */}
             {loading && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-md">
@@ -68,7 +64,7 @@ export function DashboardWidget({
                         </div>
                     )}
                     {title && (
-                        <h3 className="font-bold tracking-tight text-foreground transition-colors uppercase text-sm tracking-[0.15em] opacity-80 group-hover:opacity-100">
+                        <h3 className="font-medium tracking-wider text-muted-foreground uppercase text-xs opacity-80 group-hover:opacity-100 transition-opacity">
                             {title}
                         </h3>
                     )}

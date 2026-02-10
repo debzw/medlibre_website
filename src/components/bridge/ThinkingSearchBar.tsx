@@ -284,9 +284,6 @@ export const ThinkingSearchBar = ({
                                             className="flex justify-between items-center aria-selected:bg-primary/10 py-3 px-4 rounded-lg group"
                                         >
                                             <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                <span className="text-xl shrink-0 grayscale group-aria-selected:grayscale-0 transition-all">
-                                                    {getTypeIcon(match.type)}
-                                                </span>
                                                 <div className="flex flex-col gap-0.5 min-w-0">
                                                     <div className="truncate">
                                                         <Highlight text={match.value} query={searchQuery} />
@@ -296,9 +293,6 @@ export const ThinkingSearchBar = ({
                                                     </span>
                                                 </div>
                                             </div>
-                                            <Badge variant="secondary" className="bg-muted/50 text-muted-foreground shrink-0 ml-2 font-mono text-[10px]">
-                                                {match.count}
-                                            </Badge>
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
@@ -317,7 +311,6 @@ export const ThinkingSearchBar = ({
                                             className="flex justify-between"
                                         >
                                             <Highlight text={banca} query={searchQuery} />
-                                            <span className="text-xs text-muted-foreground">{count} questões</span>
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
@@ -336,7 +329,6 @@ export const ThinkingSearchBar = ({
                                             className="flex justify-between"
                                         >
                                             <Highlight text={area} query={searchQuery} />
-                                            <span className="text-xs text-muted-foreground">{count} questões</span>
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
@@ -355,7 +347,6 @@ export const ThinkingSearchBar = ({
                                             className="flex justify-between"
                                         >
                                             <Highlight text={esp} query={searchQuery} />
-                                            <span className="text-xs text-muted-foreground">{count} questões</span>
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
@@ -374,7 +365,6 @@ export const ThinkingSearchBar = ({
                                             className="flex justify-between"
                                         >
                                             <Highlight text={tema} query={searchQuery} />
-                                            <span className="text-xs text-muted-foreground">{count} questões</span>
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>

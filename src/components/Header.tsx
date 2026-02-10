@@ -26,40 +26,42 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 glass border-b">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center">
-          <img src="/logo_withname.svg" alt="medlibre" className="h-8 dark:hidden" />
-          <img src="/logo_withname_white.svg" alt="medlibre" className="h-8 hidden dark:block" />
-        </Link>
+        {/* Logo and Navigation Group */}
+        <div className="flex items-center gap-4 md:gap-8">
+          <Link href="/" className="flex items-center">
+            <img src="/logo_withname.svg" alt="medlibre" className="h-8 dark:hidden" />
+            <img src="/logo_withname_white.svg" alt="medlibre" className="h-8 hidden dark:block" />
+          </Link>
 
-        {/* Navigation links - desktop */}
-        <nav className="hidden md:flex items-center gap-1">
+          {/* Navigation links - desktop */}
+          <nav className="hidden md:flex items-center gap-1">
 
-          <Link href="/setup">
-            <Button variant="ghost" size="sm" className="gap-1.5">
-              <Target className="w-4 h-4" />
-              Focado
-            </Button>
-          </Link>
-          <Link href="/app">
-            <Button variant="ghost" size="sm" className="gap-1.5">
-              <Sparkles className="w-4 h-4" />
-              Questões
-            </Button>
-          </Link>
-          <Link href="/statistics">
-            <Button variant="ghost" size="sm" className="gap-1.5">
-              <BarChart3 className="w-4 h-4" />
-              Estatísticas
-            </Button>
-          </Link>
-          <Link href="/about">
-            <Button variant="ghost" size="sm" className="gap-1.5">
-              <Info className="w-4 h-4" />
-              Sobre
-            </Button>
-          </Link>
-        </nav>
+            <Link href="/setup">
+              <Button variant="ghost" size="sm" className="gap-1.5">
+                <Target className="w-4 h-4" />
+                Focado
+              </Button>
+            </Link>
+            <Link href="/app">
+              <Button variant="ghost" size="sm" className="gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                Questões
+              </Button>
+            </Link>
+            <Link href="/statistics">
+              <Button variant="ghost" size="sm" className="gap-1.5">
+                <BarChart3 className="w-4 h-4" />
+                Estatísticas
+              </Button>
+            </Link>
+            <Link href="/about">
+              <Button variant="ghost" size="sm" className="gap-1.5">
+                <Info className="w-4 h-4" />
+                Sobre
+              </Button>
+            </Link>
+          </nav>
+        </div>
 
         {/* Right side */}
         <div className="flex items-center gap-2 md:gap-4">

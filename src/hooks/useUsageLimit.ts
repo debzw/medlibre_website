@@ -26,7 +26,10 @@ export function useUsageLimit(
 
       // Check if we need to reset daily count (Visual only - Server handles actual reset on write)
       const today = new Date().toISOString().split('T')[0];
-      if (userProfile.last_reset_date !== today) {
+      const profileResetDate = userProfile.last_reset_date;
+
+      // Compare dates - if profile date is older than today, show 0 (will reset on next increment)
+      if (profileResetDate < today) {
         setQuestionsUsed(0);
       } else {
         setQuestionsUsed(userProfile.questions_answered_today);

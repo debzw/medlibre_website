@@ -75,8 +75,8 @@ export default function StatisticsPage() {
                 className="sticky top-0 z-[50] -mx-4 px-4 py-4 mb-4 bg-background/80 backdrop-blur-2xl border-b border-border/50 flex flex-col md:flex-row items-center justify-between gap-4"
             >
                 <div className="flex items-center gap-4">
-                    <div className="rounded-2xl bg-gradient-to-br from-primary to-primary/40 p-3 shadow-[0_10px_20px_-5px_rgba(var(--primary-rgb),0.3)]">
-                        <LayoutDashboard className="h-6 w-6 text-white" />
+                    <div className="rounded-2xl bg-primary/10 p-3">
+                        <LayoutDashboard className="h-6 w-6 text-primary" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-black tracking-tight text-foreground/90">Dashboard</h1>

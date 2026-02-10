@@ -51,7 +51,7 @@ export default function PricingClient() {
             name: 'Premium',
             icon: <Crown className="w-8 h-8 text-amber-500" />,
             description: 'A experiência completa e ilimitada.',
-            price: 'R$ XX / mês',
+            price: 'Grátis por enquanto!',
             cta: 'Assinar Agora',
             onClick: () => {
                 console.log('Subscribe to premium');
