@@ -36,7 +36,7 @@ export const metadata: Metadata = {
         locale: 'pt_BR',
         url: 'https://medlibre.com.br',
         siteName: 'medlibre',
-        title: 'medlibre | Preparação para Residência Médica com Ciência',
+        title: 'Medlibre | Preparação para Residência Médica com Ciência',
         description: 'Plataforma gratuita de preparação para residência médica. Estude com repetição espaçada e recuperação ativa. Banco de questões verificado.',
         images: [
             {

@@ -22,8 +22,13 @@ export function useTheme(options: UseThemeOptions = {}) {
       const saved = localStorage.getItem('medlibre-theme') as Theme;
       if (saved) return saved;
 
-      // Default to dark mode
-      return 'dark';
+      // Check system preference
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+      }
+
+      // Default to light if no system preference for dark is found
+      return 'light';
     }
     return 'dark';
   });

@@ -65,8 +65,10 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Theme toggle */}
-          <ThemeToggle />
+          {/* Theme toggle - Hidden on mobile, visible on desktop */}
+          <div className="hidden md:flex">
+            <ThemeToggle />
+          </div>
 
           {/* Usage indicator */}
           {showLimit && (
