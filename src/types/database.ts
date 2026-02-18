@@ -1,23 +1,41 @@
 export interface Question {
   id: string;
+  numero: number | null;
+  tipo: string | null;
+  enunciado: string;
+  texto_base: string | null;
+  status_imagem: number | null;
+  referencia_imagem: string | null;
+  alternativa_a: string | null;
+  alternativa_b: string | null;
+  alternativa_c: string | null;
+  alternativa_d: string | null;
+  alternativa_e: string | null;
+  imagem_alt_a: string | null;
+  imagem_alt_b: string | null;
+  imagem_alt_c: string | null;
+  imagem_alt_d: string | null;
+  imagem_alt_e: string | null;
   banca: string;
   ano: number;
-  enunciado: string;
-  imagem_url: string | null;
+  exam_type: string | null;
+  processado: number | null;
+  output_gabarito: string | null;
+  output_explicacao: string | null;
+  output_grande_area: string | null;
+  output_especialidade: string | null;
+  output_tema: string | null;
+  output_subtema: string | null;
+  output_taxa_certeza: number | null;
+  tem_anomalia: number | null;
+  log_anomalia: string | null;
+  imagem_nova: string | null;
   opcoes: string[];
   resposta_correta: number;
   created_at: string;
-  // New fields from Supabase schema
-  campo_medico?: string; // Legacy field for UI compatibility
+  // Legacy or derived fields
+  campo_medico?: string;
   especialidade?: string | null;
-  output_grande_area?: string | null;
-  output_especialidade?: string | null;
-  output_tema?: string | null;
-  output_subtema?: string | null;
-  output_explicacao?: string | null;
-  output_gabarito?: string | null;
-  status_imagem?: number | null;
-  referencia_imagem?: string | null;
 }
 
 export interface UserProfile {

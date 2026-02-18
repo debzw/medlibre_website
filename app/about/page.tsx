@@ -6,13 +6,13 @@ import { CTASection } from '@/components/landing/CTASection';
 
 
 export const metadata: Metadata = {
-    title: 'Sobre o medlibre | Ciência e Liberdade na Medicina',
-    description: 'O medlibre é a revolução científica na preparação para residência médica. Estude com repetição espaçada e recuperação ativa em uma plataforma gratuita e sem anúncios entre questões.',
-    keywords: ['sobre medlibre', 'metodologia estudo médico', 'preparação residência gratuita', 'ciência cognitiva medicina'],
+    title: 'Sobre o Medlibre | Ciência e Liberdade na Medicina',
+    description: 'O Medlibre é a revolução científica na preparação para residência médica. Estude com repetição espaçada e recuperação ativa em uma plataforma gratuita e sem anúncios entre questões.',
+    keywords: ['sobre Medlibre', 'metodologia estudo médico', 'preparação residência gratuita', 'ciência cognitiva medicina'],
     openGraph: {
-        title: 'Sobre o medlibre | A Ciência por trás da Sua Aprovação',
+        title: 'Sobre o Medlibre | A Ciência por trás da Sua Aprovação',
         description: 'Conheça o banco de questões que está mudando as regras do jogo. Sem vídeo-aulas passivas, focado em resultados.',
-        images: [{ url: '/logo_withname.png' }],
+        images: [{ url: '/logo.png' }],
     }
 };
 

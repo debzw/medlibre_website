@@ -105,7 +105,7 @@ export const generatePDF = async (questions: Question[], filename = 'medlibre-ca
         yPos += textHeight + 5;
 
         // --- Image (if exists) ---
-        const imageUrl = q.imagem_url || q.referencia_imagem;
+        const imageUrl = q.imagem_nova || q.referencia_imagem;
         if (imageUrl) {
             try {
                 const img = await loadImage(imageUrl);

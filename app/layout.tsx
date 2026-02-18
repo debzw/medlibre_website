@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
     title: {
-        default: 'medlibre | Preparação para Residência Médica',
+        default: 'Medlibre | Preparação para Residência Médica',
         template: '%s | medlibre',
     },
     description: 'Plataforma gratuita de preparação para residência médica com banco de questões das principais bancas (USP, UNIFESP, ENARE). Estude com ciência: repetição espaçada (SRS) e recuperação ativa (Active Recall).',
@@ -27,23 +27,23 @@ export const metadata: Metadata = {
         'flashcards medicina',
         'estudo ativo medicina'
     ],
-    authors: [{ name: 'medlibre' }],
-    creator: 'medlibre',
-    publisher: 'medlibre',
+    authors: [{ name: 'Medlibre' }],
+    creator: 'Medlibre',
+    publisher: 'Medlibre',
     metadataBase: new URL('https://medlibre.com.br'),
     openGraph: {
         type: 'website',
         locale: 'pt_BR',
         url: 'https://medlibre.com.br',
         siteName: 'medlibre',
-        title: 'Medlibre | Preparação para Residência Médica com Ciência',
+        title: 'Medlibre | Preparação para Residência Médica gratuita',
         description: 'Plataforma gratuita de preparação para residência médica. Estude com repetição espaçada e recuperação ativa. Banco de questões verificado.',
         images: [
             {
-                url: '/logo_withname.png',
+                url: '/logo.png',
                 width: 1200,
                 height: 630,
-                alt: 'medlibre - Preparação para Residência',
+                alt: 'Medlibre - Preparação para Residência',
             },
         ],
     },

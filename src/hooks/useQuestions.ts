@@ -59,7 +59,10 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
         fetchError = rpcError;
       } else {
         // Fallback for guests OR text search OR status filtering
-        let query = supabase.from('questions').select('*');
+        let query = supabase
+          .from('questions')
+          .select('*')
+          .or('tem_anomalia.is.null,tem_anomalia.neq.1');
 
         if (filters.status && user) {
           // Get question IDs from history based on status
@@ -130,18 +133,25 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           let parsedOpcoes = typeof q.opcoes === 'string' ? JSON.parse(q.opcoes) : q.opcoes;
 
           // Ensure opcoes is an array of strings
-          if (Array.isArray(parsedOpcoes)) {
+          if (Array.isArray(parsedOpcoes) && parsedOpcoes.length > 0) {
             parsedOpcoes = parsedOpcoes.map((opt: any) =>
               typeof opt === 'object' && opt !== null && 'texto' in opt ? opt.texto : opt
             );
           } else {
-            parsedOpcoes = [];
+            // Fallback to alternativa_a...e
+            parsedOpcoes = [
+              q.alternativa_a,
+              q.alternativa_b,
+              q.alternativa_c,
+              q.alternativa_d,
+              q.alternativa_e
+            ].filter(Boolean);
           }
 
           return {
             ...q,
             opcoes: parsedOpcoes,
-            campo_medico: q.output_grande_area || q.especialidade || 'Geral',
+            campo_medico: q.output_grande_area || q.output_especialidade || 'Geral',
           };
         }) as Question[];
         setQuestions(parsedQuestions);
@@ -172,7 +182,8 @@ export function useFilterOptions() {
     try {
       const { data: questions } = await supabase
         .from('questions')
-        .select('banca, ano, output_grande_area');
+        .select('banca, ano, output_grande_area')
+        .or('tem_anomalia.is.null,tem_anomalia.neq.1');
 
       if (questions) {
         const bancas = [...new Set(questions.map(q => q.banca))].sort();

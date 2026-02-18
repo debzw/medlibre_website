@@ -101,6 +101,12 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
   };
 
   const optionLabels = ['A', 'B', 'C', 'D', 'E'];
+  const optionImageKeys: (keyof Question)[] = ['imagem_alt_a', 'imagem_alt_b', 'imagem_alt_c', 'imagem_alt_d', 'imagem_alt_e'];
+
+  // Check if texto_base is substantially different from enunciado
+  const showTextoBase = question.texto_base &&
+    question.texto_base.trim() !== "" &&
+    question.texto_base.trim() !== question.enunciado.trim();
 
   return (
     <div className="card-elevated p-4 sm:p-6 space-y-4 sm:space-y-6 animate-slide-up">
@@ -155,14 +161,21 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
       </div>
 
       {/* Question text and Image between statement and options */}
-      <div className="space-y-3 sm:space-y-4">
-        <p className="text-base sm:text-lg leading-relaxed text-foreground">{question.enunciado}</p>
+      <div className="space-y-4">
+        {showTextoBase && (
+          <div className="p-4 rounded-xl bg-secondary/20 border-l-4 border-primary/30 text-sm sm:text-base text-foreground/70 italic leading-relaxed">
+            {question.texto_base}
+          </div>
+        )}
+        <p className="text-base sm:text-lg leading-relaxed text-foreground font-medium">
+          {question.enunciado}
+        </p>
 
         {/* Image if present (using status_imagem == 1 or existence of image urls) */}
-        {(question.status_imagem === 1 || question.imagem_url || question.referencia_imagem) && (
+        {(question.status_imagem === 1 || question.imagem_nova || question.referencia_imagem) && (
           <div className="rounded-xl overflow-hidden border border-border bg-secondary/30 -mx-4 sm:mx-0">
             <img
-              src={question.imagem_url || question.referencia_imagem || ''}
+              src={question.imagem_nova || question.referencia_imagem || ''}
               alt="Imagem da questão"
               className="w-full max-h-60 sm:max-h-80 object-contain"
               onError={(e) => {
@@ -184,12 +197,28 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
               disabled={!canAnswer || showResult}
               className={cn(getOptionClass(index), "p-3 sm:p-4")}
             >
-              <div className="flex items-start gap-2 sm:gap-3">
-                <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0">
-                  {optionLabels[index]}
-                </span>
-                <span className="text-left flex-1 pt-0.5 sm:pt-1 text-sm sm:text-base">{opcao}</span>
-                {getOptionIcon(index)}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0">
+                    {optionLabels[index]}
+                  </span>
+                  <span className="text-left flex-1 pt-0.5 sm:pt-1 text-sm sm:text-base">{opcao}</span>
+                  {getOptionIcon(index)}
+                </div>
+
+                {/* Alternative Image if present */}
+                {question[optionImageKeys[index]] && (
+                  <div className="ml-9 sm:ml-11 rounded-lg overflow-hidden border border-border/50 bg-white/5 max-w-xs">
+                    <img
+                      src={question[optionImageKeys[index]] as string}
+                      alt={`Imagem alternativa ${optionLabels[index]}`}
+                      className="w-full h-auto object-contain max-h-40"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).parentElement!.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </button>
           );

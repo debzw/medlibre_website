@@ -32,6 +32,7 @@ export function useAuth() {
       id: DEV_USER_ID,
       tier: 'paid', // 'free' ou 'paid' - altera para testar limites
       questions_answered_today: 0,
+      pdfs_exported_today: 0,
       last_reset_date: new Date().toISOString().split('T')[0],
       theme_preference: 'dark',
       preferred_banca: null,
