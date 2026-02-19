@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AdBanner } from './AdBanner';
 import { ReportDialog } from './modals/ReportDialog';
 
 interface QuestionCardProps {
@@ -26,7 +27,7 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
   const [showResult, setShowResult] = useState(false);
   const startTimeRef = useRef<number>(Date.now());
   const { saveAnswer } = useQuestionHistory();
-  const { user } = useAuthContext();
+  const { user, userType } = useAuthContext();
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
   // Reset or restore state when question changes
@@ -163,11 +164,11 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
       {/* Question text and Image between statement and options */}
       <div className="space-y-4">
         {showTextoBase && (
-          <div className="p-4 rounded-xl bg-secondary/20 border-l-4 border-primary/30 text-sm sm:text-base text-foreground/70 italic leading-relaxed">
+          <div className="p-4 rounded-xl bg-secondary/20 border-l-4 border-primary/30 text-sm sm:text-base text-foreground/70 italic leading-relaxed whitespace-pre-wrap">
             {question.texto_base}
           </div>
         )}
-        <p className="text-base sm:text-lg leading-relaxed text-foreground font-medium">
+        <p className="text-base sm:text-lg leading-relaxed text-foreground font-medium whitespace-pre-wrap">
           {question.enunciado}
         </p>
 
@@ -185,6 +186,13 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
           </div>
         )}
       </div>
+
+      {/* Ad Banner for mobile - Only shown for free/guest users */}
+      {userType !== 'paid' && (
+        <div className="md:hidden py-1">
+          <AdBanner variant="horizontal" className="h-[100px] border-dashed border-2 border-border/30 rounded-xl" />
+        </div>
+      )}
 
       {/* Options */}
       <div className="space-y-3">

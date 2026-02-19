@@ -72,44 +72,67 @@ export default function StatisticsPage() {
             <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="sticky top-0 z-[50] -mx-4 px-4 py-4 mb-4 bg-background/80 backdrop-blur-2xl border-b border-border/50 flex flex-col md:flex-row items-center justify-between gap-4"
+                className="sticky top-0 z-[50] -mx-4 px-4 py-4 mb-4 bg-background/80 backdrop-blur-2xl border-b border-border/50 flex flex-col items-center justify-between gap-4 lg:gap-6"
             >
-                <div className="flex items-center gap-4">
-                    <div className="rounded-2xl bg-primary/10 p-3">
-                        <LayoutDashboard className="h-6 w-6 text-primary" />
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-4">
+                        <div className="rounded-2xl bg-primary/10 p-3">
+                            <LayoutDashboard className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black tracking-tight text-foreground/90">Dashboard</h1>
+                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">Sua Central de Comando</p>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-2xl font-black tracking-tight text-foreground/90">Dashboard</h1>
-                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">Sua Central de Comando</p>
+
+                    <div className="lg:hidden">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl text-primary hover:bg-primary/5 transition-colors">
+                                    <MoreVertical className="h-6 w-6" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl">
+                                <DropdownMenuItem
+                                    onClick={() => setIsReportDialogOpen(true)}
+                                    className="gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
+                                >
+                                    <Flag className="h-4 w-4" />
+                                    Reportar erro nos dados
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Tabs defaultValue="all" value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)} className="w-full md:w-auto">
-                        <TabsList className="bg-muted p-1 rounded-2xl w-full md:w-auto ring-1 ring-border/50">
-                            <TabsTrigger value="today" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-widest px-6">Hoje</TabsTrigger>
-                            <TabsTrigger value="week" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-widest px-6">Semana</TabsTrigger>
-                            <TabsTrigger value="month" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-widest px-6">Mês</TabsTrigger>
-                            <TabsTrigger value="all" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-widest px-6">Sempre</TabsTrigger>
+                <div className="flex items-center gap-2 w-full lg:w-auto px-4 lg:px-0">
+                    <Tabs defaultValue="all" value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)} className="w-full lg:w-auto">
+                        <TabsList className="bg-muted p-1 rounded-2xl w-full lg:w-auto ring-1 ring-border/50 grid grid-cols-4 lg:flex h-auto lg:h-10">
+                            <TabsTrigger value="today" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold text-[10px] lg:text-xs uppercase tracking-widest px-1 lg:px-6 py-2.5 lg:py-1.5">Hoje</TabsTrigger>
+                            <TabsTrigger value="week" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold text-[10px] lg:text-xs uppercase tracking-widest px-1 lg:px-6 py-2.5 lg:py-1.5">Semana</TabsTrigger>
+                            <TabsTrigger value="month" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold text-[10px] lg:text-xs uppercase tracking-widest px-1 lg:px-6 py-2.5 lg:py-1.5">Mês</TabsTrigger>
+                            <TabsTrigger value="all" className="rounded-xl data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm font-bold text-[10px] lg:text-xs uppercase tracking-widest px-1 lg:px-6 py-2.5 lg:py-1.5">Sempre</TabsTrigger>
                         </TabsList>
                     </Tabs>
 
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl bg-muted/50 border border-border/50">
-                                <MoreVertical className="h-5 w-5 text-muted-foreground" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl">
-                            <DropdownMenuItem
-                                onClick={() => setIsReportDialogOpen(true)}
-                                className="gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
-                            >
-                                <Flag className="h-4 w-4" />
-                                Reportar erro nos dados
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="hidden lg:block">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl bg-muted/50 border border-border/50">
+                                    <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl">
+                                <DropdownMenuItem
+                                    onClick={() => setIsReportDialogOpen(true)}
+                                    className="gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
+                                >
+                                    <Flag className="h-4 w-4" />
+                                    Reportar erro nos dados
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
             </motion.div>
 

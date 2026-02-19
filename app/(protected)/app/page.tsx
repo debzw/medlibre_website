@@ -33,6 +33,15 @@ export default function QuestionsPage() {
     const [recentlyAnsweredId, setRecentlyAnsweredId] = useState<string | null>(null);
     const [questionHistory, setQuestionHistory] = useState<string[]>([]);
     const [historyIndex, setHistoryIndex] = useState<number>(-1);
+    const [isFirstInterstitial, setIsFirstInterstitial] = useState(false);
+
+    // Check if login CTA has been shown
+    useEffect(() => {
+        const ctaShown = localStorage.getItem('medlibre_interstitial_cta_shown');
+        if (!ctaShown) {
+            setIsFirstInterstitial(true);
+        }
+    }, []);
 
     // Sync state with search params when they change
     useEffect(() => {
@@ -178,6 +187,11 @@ export default function QuestionsPage() {
     };
 
     const handleAdClose = () => {
+        // If it was the first interstitial for a guest, mark it as shown
+        if (userType === 'guest' && isFirstInterstitial) {
+            setIsFirstInterstitial(false);
+            localStorage.setItem('medlibre_interstitial_cta_shown', 'true');
+        }
         setShowAdModal(false);
         handleNextQuestion();
     };
@@ -389,7 +403,11 @@ export default function QuestionsPage() {
             </div>
 
             {/* Ad Modal */}
-            <AdModal isOpen={showAdModal} onClose={handleAdClose} />
+            <AdModal
+                isOpen={showAdModal}
+                onClose={handleAdClose}
+                isLoginCTA={userType === 'guest' && isFirstInterstitial}
+            />
         </div>
     );
 }
