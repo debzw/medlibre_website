@@ -15,6 +15,8 @@ interface AuthContextType {
   getRemainingQuestions: () => number;
   getLimit: () => number;
   incrementUsage: () => Promise<void>;
+  isFirstGuestInterstitial: boolean;
+  markInterstitialAsShown: () => void;
   signInWithGoogle: () => Promise<{ error: any }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: any }>;
@@ -39,6 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getRemainingQuestions: usage.getRemainingQuestions,
     getLimit: usage.getLimit,
     incrementUsage: usage.incrementUsage,
+    isFirstGuestInterstitial: usage.isFirstGuestInterstitial,
+    markInterstitialAsShown: usage.markInterstitialAsShown,
     updateThemePreference: auth.updateThemePreference,
     updatePreferredBanca: auth.updatePreferredBanca,
     updateProfile: auth.updateProfile,

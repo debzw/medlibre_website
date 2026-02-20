@@ -49,20 +49,36 @@ export function AdModal({ isOpen, onClose, isLoginCTA }: AdModalProps) {
           {isLoginCTA ? (
             <div className="text-center space-y-6">
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <div className="text-3xl">✨</div>
+                <div className="text-3xl text-amber-500">🚀</div>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold tracking-tight">Estude sem interrupções!</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Faça login gratuito agora para remover os anúncios entre as questões e salvar seu progresso.
-                </p>
+              <div className="space-y-3 px-4">
+                <h3 className="text-2xl font-black tracking-tighter">Estude 4x mais!</h3>
+                <div className="space-y-4 text-sm sm:text-base">
+                  <p className="text-muted-foreground leading-relaxed">
+                    Como <span className="font-bold text-foreground">Visitante</span>, você tem um limite de <span className="font-bold text-foreground">5 questões</span> por dia.
+                  </p>
+                  <div className="py-3 px-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <p className="font-medium">
+                      ✨ Crie sua conta gratuita e aumente seu limite para <span className="text-primary font-bold">20 questões diárias</span> agora mesmo!
+                    </p>
+                  </div>
+                </div>
               </div>
-              <Button
-                className="w-full h-12 text-base font-semibold btn-amber"
-                onClick={() => window.location.href = '/auth'}
-              >
-                Fazer Login Gratuito
-              </Button>
+              <div className="space-y-3 w-full">
+                <Button
+                  className="w-full h-12 text-base font-bold btn-amber shadow-lg shadow-amber-500/20"
+                  onClick={() => window.location.href = '/auth'}
+                >
+                  Criar Conta Grátis
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full text-muted-foreground hover:text-foreground text-xs font-medium"
+                  onClick={onClose}
+                >
+                  Continuar sem logar
+                </Button>
+              </div>
             </div>
           ) : (
             <>

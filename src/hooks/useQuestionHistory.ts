@@ -72,10 +72,14 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['questionHistory', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      const localHistory = getLocalHistory();
+
+      if (!user) {
+        return localHistory;
+      }
 
       if (DEV_MODE) {
-        return getLocalHistory();
+        return localHistory;
       }
 
       // Optimization: Fetch only necessary fields for "isAnswered" checks
@@ -94,6 +98,10 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
       return data as QuestionHistoryEntry[];
     },
     enabled: !!user,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const { data: stats } = useQuery({
@@ -163,33 +171,28 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
       campo_medico?: string;
       banca?: string;
     }) => {
-      if (!user) return null;
-
-      // Cache question metadata
+      // Always cache question metadata
       if (campo_medico && banca) {
         updateQuestionsCache(questionId, campo_medico, banca);
       }
 
-      if (DEV_MODE) {
-        // Use localStorage in DEV_MODE
+      const newLocalEntry: QuestionHistoryEntry = {
+        id: crypto.randomUUID(),
+        user_id: user?.id || 'guest',
+        question_id: questionId,
+        selected_answer: selectedAnswer,
+        is_correct: isCorrect,
+        answered_at: new Date().toISOString(),
+        time_spent_seconds: timeSpentSeconds ?? null,
+        campo_medico,
+        banca,
+      };
+
+      if (!user || DEV_MODE) {
         const localHistory = getLocalHistory();
-
-        // Always create a new entry
-        const newEntry: QuestionHistoryEntry = {
-          id: crypto.randomUUID(),
-          user_id: user.id,
-          question_id: questionId,
-          selected_answer: selectedAnswer,
-          is_correct: isCorrect,
-          answered_at: new Date().toISOString(),
-          time_spent_seconds: timeSpentSeconds ?? null,
-          campo_medico,
-          banca,
-        };
-
-        localHistory.unshift(newEntry);
+        localHistory.unshift(newLocalEntry);
         saveLocalHistory(localHistory);
-        return newEntry;
+        return newLocalEntry;
       }
 
       // Always insert new record (allow multiple attempts)

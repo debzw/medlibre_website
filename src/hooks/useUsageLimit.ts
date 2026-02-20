@@ -13,6 +13,7 @@ export function useUsageLimit(
   const [pdfsUsed, setPdfsUsed] = useState(0);
   const [userType, setUserType] = useState<UserType>('guest');
   const [loading, setLoading] = useState(true);
+  const [isFirstGuestInterstitial, setIsFirstGuestInterstitial] = useState(false);
 
   useEffect(() => {
     initializeUsage();
@@ -43,6 +44,10 @@ export function useUsageLimit(
       const guestUsage = getGuestUsage();
       setQuestionsUsed(guestUsage.questionsAnswered);
       setPdfsUsed(0);
+
+      // Check if CTA ad for guest was already shown
+      const ctaShown = localStorage.getItem('medlibre_interstitial_cta_shown');
+      setIsFirstGuestInterstitial(!ctaShown);
     }
 
     setLoading(false);
@@ -162,6 +167,13 @@ export function useUsageLimit(
     return Math.max(0, (config.pdf_limit || 0) - pdfsUsed);
   };
 
+  const markInterstitialAsShown = useCallback(() => {
+    if (userType === 'guest' && isFirstGuestInterstitial) {
+      setIsFirstGuestInterstitial(false);
+      localStorage.setItem('medlibre_interstitial_cta_shown', 'true');
+    }
+  }, [userType, isFirstGuestInterstitial]);
+
   return {
     questionsUsed,
     pdfsUsed,
@@ -175,5 +187,7 @@ export function useUsageLimit(
     getRemainingPdfs,
     getLimit,
     getPdfLimit,
+    isFirstGuestInterstitial,
+    markInterstitialAsShown,
   };
 }

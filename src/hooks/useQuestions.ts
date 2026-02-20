@@ -117,6 +117,35 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           });
         }
 
+        if (filters.hideAnswered) {
+          if (user) {
+            // For logged-in users in fallback paths (search/status), filter by server history
+            const { data: answeredIds } = await supabase
+              .from('user_question_history')
+              .select('question_id')
+              .eq('user_id', user.id);
+
+            if (answeredIds && answeredIds.length > 0) {
+              const ids = answeredIds.map(a => a.question_id);
+              query = query.not('id', 'in', `(${ids.join(',')})`);
+            }
+          } else {
+            // For guests, filter by local storage history
+            const localHistory = localStorage.getItem('medlibre_question_history');
+            if (localHistory) {
+              try {
+                const history = JSON.parse(localHistory);
+                const ids = history.map((h: any) => h.question_id);
+                if (ids.length > 0) {
+                  query = query.not('id', 'in', `(${ids.join(',')})`);
+                }
+              } catch (e) {
+                console.error('Error parsing local history for filtering:', e);
+              }
+            }
+          }
+        }
+
         const { data: filteredData, error: filteredError } = await query
           .limit(50)
           .order('created_at', { ascending: false });
