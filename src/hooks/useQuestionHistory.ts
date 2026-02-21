@@ -7,18 +7,7 @@ import { DEV_MODE } from '@/hooks/useAuth';
 const LOCAL_HISTORY_KEY = 'medlibre_question_history';
 const LOCAL_QUESTIONS_CACHE_KEY = 'medlibre_questions_cache';
 
-export interface QuestionHistoryEntry {
-  id: string;
-  user_id: string;
-  question_id: string;
-  selected_answer: number;
-  is_correct: boolean;
-  answered_at: string;
-  time_spent_seconds: number | null;
-  // Cached question data for local storage mode
-  campo_medico?: string;
-  banca?: string;
-}
+import { Question, FilterOptions, QuestionHistoryEntry } from '@/types/database';
 
 export interface UserStats {
   totalAnswered: number;

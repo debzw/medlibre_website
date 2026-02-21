@@ -30,10 +30,9 @@ export interface Question {
   tem_anomalia: number | null;
   log_anomalia: string | null;
   imagem_nova: string | null;
-  opcoes: string[];
+  opcoes: string[] | any;
   resposta_correta: number;
   created_at: string;
-  // Legacy or derived fields
   campo_medico?: string;
   especialidade?: string | null;
 }
@@ -66,6 +65,18 @@ export interface FilterOptions {
 export interface GuestUsage {
   questionsAnswered: number;
   lastResetDate: string;
+}
+
+export interface QuestionHistoryEntry {
+  id: string;
+  user_id: string;
+  question_id: string;
+  selected_answer: number;
+  is_correct: boolean;
+  answered_at: string;
+  time_spent_seconds: number | null;
+  campo_medico?: string;
+  banca?: string;
 }
 
 export type UserType = 'guest' | 'free' | 'paid';
@@ -105,3 +116,33 @@ export interface Report {
   status: ReportStatus | string | null;
   created_at: string;
 }
+
+export type Database = {
+  public: {
+    Tables: {
+      [key: string]: {
+        Row: any;
+        Insert: any;
+        Update: any;
+        Relationships: any[];
+      };
+    };
+    Views: {
+      [key: string]: {
+        Row: any;
+      };
+    };
+    Functions: {
+      [key: string]: {
+        Args: any;
+        Returns: any;
+      };
+    };
+    Enums: {
+      [key: string]: any;
+    };
+    CompositeTypes: {
+      [key: string]: any;
+    };
+  };
+};

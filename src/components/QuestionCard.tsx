@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Question } from '@/types/database';
+import { Question, QuestionHistoryEntry } from '@/types/database';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, X, MoreVertical, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useQuestionHistory, QuestionHistoryEntry } from '@/hooks/useQuestionHistory';
+import { useQuestionHistory } from '@/hooks/useQuestionHistory';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
