@@ -19,7 +19,7 @@ function useDebounce<T>(value: T, delay: number): T {
     return debouncedValue;
 }
 
-export type Combination = [string, number, string, string, string, number]; // [banca, ano, especialidade, grande_area, tema, q_count]
+export type Combination = [string, number, string, string, number] | [string, number, string, string, string, number]; // [banca, ano, especialidade, grande_area, (optional tema), q_count]
 
 export interface MetadataSummary {
     combinations: Combination[];
@@ -88,7 +88,10 @@ export const useSmartFilters = () => {
         const normalizedQuery = normalize(query.trim());
         if (!normalizedQuery) return true;
 
-        const [banca, _, especialidade, area, tema] = combination;
+        const banca = combination[0];
+        const especialidade = combination[2];
+        const area = combination[3];
+        const tema = combination.length === 6 ? combination[4] : '';
         const queryParts = normalizedQuery.split(/\s+/).filter(p => p.length > 0);
 
         // Simple Substring matching for any field
@@ -116,7 +119,12 @@ export const useSmartFilters = () => {
         const scoreCache = new Map<string, number>();
 
         combinations.forEach((combo) => {
-            const [banca, ano, especialidade, area, tema, count] = combo;
+            const banca = combo[0];
+            const ano = combo[1];
+            const especialidade = combo[2];
+            const area = combo[3];
+            const tema = combo.length === 6 ? combo[4] : '';
+            const count = combo.length === 6 ? combo[5] : combo[4] as number;
 
             // Global Filter Check
             if (!matchesSearch(combo, debouncedSearchQuery)) return;
@@ -192,16 +200,21 @@ export const useSmartFilters = () => {
 
     const totalFilteredQuestions = useMemo(() => {
         return combinations.reduce((acc, combo) => {
-            const [b, a, e, ar, t, count] = combo;
+            const banca = combo[0];
+            const ano = combo[1];
+            const especialidade = combo[2];
+            const area = combo[3];
+            const count = combo.length === 6 ? combo[5] : combo[4] as number;
+
             if (
                 matchesSearch(combo, debouncedSearchQuery) &&
-                (!selectedBanca || b === selectedBanca) &&
-                (!selectedAno || a === selectedAno) &&
-                (!selectedArea || ar === selectedArea) &&
-                (!selectedEspecialidade || e === selectedEspecialidade) &&
-                (!selectedTema || t === selectedTema)
+                (!selectedBanca || banca === selectedBanca) &&
+                (!selectedAno || ano === selectedAno) &&
+                (!selectedArea || area === selectedArea) &&
+                (!selectedEspecialidade || especialidade === selectedEspecialidade) &&
+                (!selectedTema || (combo.length === 6 && combo[4] === selectedTema))
             ) {
-                return acc + count;
+                return acc + (count || 0);
             }
             return acc;
         }, 0);
@@ -218,11 +231,16 @@ export const useSmartFilters = () => {
 
     const searchableTerms = useMemo(() => {
         const terms = new Set<string>();
-        combinations.forEach(([banca, _, especialidade, area, tema]) => {
-            if (banca) terms.add(banca);
-            if (especialidade) terms.add(especialidade);
-            if (area) terms.add(area);
-            if (tema) terms.add(tema);
+        combinations.forEach((combo) => {
+            const banca = combo[0];
+            const especialidade = combo[2];
+            const area = combo[3];
+            const tema = combo.length === 6 ? combo[4] : '';
+
+            if (banca) terms.add(banca as string);
+            if (especialidade) terms.add(especialidade as string);
+            if (area) terms.add(area as string);
+            if (tema) terms.add(tema as string);
         });
         return Array.from(terms).sort();
     }, [combinations]);

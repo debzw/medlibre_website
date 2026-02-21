@@ -122,7 +122,7 @@ export function useAuth() {
               questions_answered_today: 0,
               last_reset_date: new Date().toISOString().split('T')[0],
               theme_preference: 'dark'
-            } as any
+            }
           ])
           .select()
           .single();
@@ -162,7 +162,7 @@ export function useAuth() {
     try {
       const { error } = await supabase
         .from('user_profiles')
-        .update({ theme_preference: theme } as any)
+        .update({ theme_preference: theme })
         .eq('id', user.id);
 
       if (error) {
@@ -194,7 +194,7 @@ export function useAuth() {
     try {
       const { error } = await supabase
         .from('user_profiles')
-        .update(updates as any)
+        .update(updates)
         .eq('id', user.id);
 
       if (error) {

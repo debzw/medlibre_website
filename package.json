@@ -9,7 +9,8 @@
     "start": "set NEXT_TELEMETRY_DISABLED=1 && next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "update:types": "npx supabase gen types typescript --project-id nxznvlrtnznybcjorbom > src/integrations/supabase/types.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
