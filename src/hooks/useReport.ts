@@ -18,7 +18,13 @@ export function useReport() {
 
     const submitReport = async (data: ReportData) => {
         try {
-            const { error } = await supabase.from('reports').insert({
+            console.log('Starting report submission:', { type: data.type, category: data.category });
+
+            if (!user) {
+                console.warn('User not authenticated while submitting report');
+            }
+
+            const { error: insertError } = await supabase.from('reports').insert({
                 user_id: user?.id,
                 type: data.type,
                 category: data.category,
@@ -27,7 +33,10 @@ export function useReport() {
                 metadata: data.metadata || {},
             });
 
-            if (error) throw error;
+            if (insertError) {
+                console.error('Supabase error inserting report:', insertError);
+                throw insertError;
+            }
 
             toast({
                 title: "Relatório enviado",
@@ -35,13 +44,15 @@ export function useReport() {
             });
 
             return { success: true };
-        } catch (error) {
-            console.error('Error submitting report:', error);
+        } catch (error: any) {
+            console.error('Fatal error submitting report:', error);
+
             toast({
                 title: "Erro ao enviar relatório",
-                description: "Não foi possível enviar o seu relatório agora. Tente novamente mais tarde.",
+                description: error.message || "Não foi possível enviar o seu relatório agora. Tente novamente mais tarde.",
                 variant: "destructive",
             });
+
             return { success: false, error };
         }
     };

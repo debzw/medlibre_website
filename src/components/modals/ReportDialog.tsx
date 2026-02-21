@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
@@ -70,21 +70,52 @@ export function ReportDialog({
         if (!category) return;
 
         setIsSubmitting(true);
-        const result = await submitReport({
-            type,
-            category,
-            target_id: targetId,
-            description,
-            metadata: { targetName },
-        });
+        try {
+            const result = await submitReport({
+                type,
+                category,
+                target_id: targetId,
+                description,
+                metadata: { targetName },
+            });
 
-        setIsSubmitting(false);
-        if (result.success) {
-            setCategory("");
-            setDescription("");
-            onClose();
+            if (result.success) {
+                setCategory("");
+                setDescription("");
+                // Small delay to ensure the results are processed before closing
+                // and to avoid race conditions with Radix's internal state
+                setTimeout(() => {
+                    onClose();
+                }, 100);
+            } else {
+                // If the hook didn't succeed but didn't throw, we still need to reset
+                console.warn('Report submission returned failure result');
+            }
+        } catch (error) {
+            console.error('Catastrophic error in handleSubmit:', error);
+            // useReport already shows a toast on normal errors, but just in case
+        } finally {
+            setIsSubmitting(false);
         }
     };
+
+    // Safety net: ensure pointer-events are restored if Radix gets stuck
+    // This is a common issue when multiple overlays are involved
+    useEffect(() => {
+        if (!isOpen) {
+            const timer = setTimeout(() => {
+                document.body.style.pointerEvents = 'auto';
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
+
+    // Force restore on unmount
+    useEffect(() => {
+        return () => {
+            document.body.style.pointerEvents = 'auto';
+        };
+    }, []);
 
     const categories = CATEGORIES[type] || CATEGORIES.general;
 
