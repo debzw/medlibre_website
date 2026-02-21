@@ -47,6 +47,14 @@ export default function QuestionsPage() {
     }, [searchParams]);
 
     const status = searchParams.get('status') as 'all_answered' | 'correct' | 'incorrect' | null;
+    const testAd = searchParams.get('test_ad');
+
+    // Debug trigger for AdModal
+    useEffect(() => {
+        if (testAd) {
+            setShowAdModal(true);
+        }
+    }, [testAd]);
 
     const { options, loading: optionsLoading } = useFilterOptions();
     const { questions: allQuestions, loading: questionsLoading, error: questionsError, refetch } = useQuestions({
@@ -393,7 +401,7 @@ export default function QuestionsPage() {
             <AdModal
                 isOpen={showAdModal}
                 onClose={handleAdClose}
-                isLoginCTA={userType === 'guest' && isFirstGuestInterstitial}
+                isLoginCTA={(userType === 'guest' && isFirstGuestInterstitial) || testAd === 'cta'}
             />
         </div>
     );

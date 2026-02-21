@@ -14,7 +14,6 @@ export function useSpecialtyPerformance(specialty: string) {
             // Decode the specialty from URL
             const decodedSpecialty = decodeURIComponent(specialty);
 
-            // @ts-expect-error - RPC not yet in types
             const { data, error } = await supabase.rpc('get_specialty_performance_diagnosis', {
                 p_user_id: user.id,
                 p_specialty: decodedSpecialty,
