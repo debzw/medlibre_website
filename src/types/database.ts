@@ -35,6 +35,7 @@ export interface Question {
   created_at: string;
   campo_medico?: string;
   especialidade?: string | null;
+  especialidades_tags: string[] | null;
 }
 
 export interface UserProfile {

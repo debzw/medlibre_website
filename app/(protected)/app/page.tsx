@@ -13,7 +13,7 @@ import { useQuestions, useFilterOptions } from '@/hooks/useQuestions';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useQuestionHistory } from '@/hooks/useQuestionHistory';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, ArrowLeft, TrendingUp } from 'lucide-react';
+import { ArrowRight, ArrowLeft, TrendingUp, Search, Loader2 } from 'lucide-react';
 import { QuestionTimer, QuestionTimerRef } from '@/components/QuestionTimer';
 import { useToast } from '@/hooks/use-toast';
 import { AD_CONFIG } from '@/config/devMode';
@@ -57,7 +57,15 @@ export default function QuestionsPage() {
     }, [testAd]);
 
     const { options, loading: optionsLoading } = useFilterOptions();
-    const { questions: allQuestions, loading: questionsLoading, error: questionsError, refetch } = useQuestions({
+    const {
+        questions: allQuestions,
+        loading: questionsLoading,
+        loadingMore,
+        error: questionsError,
+        searchMeta,
+        loadMore,
+        refetch,
+    } = useQuestions({
         banca: selectedBanca,
         ano: selectedAno,
         campo_medico: selectedCampo,
@@ -67,6 +75,9 @@ export default function QuestionsPage() {
         hideAnswered: status ? false : hideAnswered,
         status: status || undefined
     });
+
+    const activeSearch = searchParams.get('search');
+    const isSearchMode = !!(activeSearch && activeSearch.trim().length > 0);
 
     const { userType, canAnswerMore, incrementUsage, getRemainingQuestions, isFirstGuestInterstitial, markInterstitialAsShown } = useAuthContext();
     const { isQuestionAnswered: checkIfAnswered, getQuestionAttempts } = useQuestionHistory();
@@ -177,11 +188,21 @@ export default function QuestionsPage() {
             setCurrentQuestionId(null);
             setQuestionHistory([]);
             setHistoryIndex(-1);
-            refetch();
-            toast({
-                title: "Gerando nova sessão",
-                description: "Carregando mais questões baseadas no seu desempenho...",
-            });
+
+            if (isSearchMode && searchMeta.hasMore) {
+                // Search mode: load next page via keyset pagination
+                loadMore();
+                toast({
+                    title: "Carregando mais resultados",
+                    description: "Buscando próximas questões relevantes...",
+                });
+            } else {
+                refetch();
+                toast({
+                    title: "Gerando nova sessão",
+                    description: "Carregando mais questões baseadas no seu desempenho...",
+                });
+            }
         }
     };
 
@@ -254,6 +275,19 @@ export default function QuestionsPage() {
                         )}
                     </div>
 
+                    {/* Search context banner */}
+                    {isSearchMode && searchMeta.correctedTerm && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/5 border border-primary/15 text-sm text-muted-foreground animate-fade-in">
+                            <Search className="h-4 w-4 text-primary shrink-0" />
+                            <span>
+                                Mostrando resultados para{' '}
+                                <span className="font-semibold text-foreground">{searchMeta.correctedTerm}</span>
+                                {' '}(corrigido de{' '}
+                                <span className="italic">{activeSearch}</span>)
+                            </span>
+                        </div>
+                    )}
+
                     {/* Filters */}
                     <FilterBar
                         options={options}
@@ -290,7 +324,7 @@ export default function QuestionsPage() {
                     {/* Progress indicator */}
                     {questions.length > 0 && (
                         <div className="flex flex-wrap items-center justify-between gap-y-2 text-[10px] sm:text-xs text-muted-foreground animate-fade-in px-1">
-                            <span className="bg-secondary/50 px-2 py-1 rounded-md">Questão {currentQuestionIndex + 1}/{questions.length}</span>
+                            <span className="bg-secondary/50 px-2 py-1 rounded-md">Questão {currentQuestionIndex + 1}</span>
                             <div className="flex items-center justify-center">
                                 <QuestionTimer ref={timerRef} />
                             </div>
@@ -302,7 +336,13 @@ export default function QuestionsPage() {
 
                     {/* Content */}
                     {questionsLoading ? (
-                        <LoadingState />
+                        <LoadingState message={
+                            isSearchMode
+                                ? (activeSearch && activeSearch.trim().split(/\s+/).length > 4
+                                    ? 'A analisar caso clínico...'
+                                    : 'A pesquisar questões...')
+                                : 'Carregando questões...'
+                        } />
                     ) : questionsError ? (
                         <EmptyState
                             title="Erro ao carregar questões"
@@ -371,11 +411,21 @@ export default function QuestionsPage() {
                                     size="default"
                                     variant={isQuestionAnswered ? "default" : "secondary"}
                                     onClick={handleNextClick}
+                                    disabled={loadingMore}
                                     className="flex-1 sm:flex-none gap-2 h-11"
                                 >
-                                    <span className="hidden sm:inline">{isQuestionAnswered ? "Próxima Questão" : "Pular Questão"}</span>
-                                    <span className="sm:hidden">{isQuestionAnswered ? "Próxima" : "Pular"}</span>
-                                    <ArrowRight className="w-4 h-4" />
+                                    {loadingMore ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Carregando...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="hidden sm:inline">{isQuestionAnswered ? "Próxima Questão" : "Pular Questão"}</span>
+                                            <span className="sm:hidden">{isQuestionAnswered ? "Próxima" : "Pular"}</span>
+                                            <ArrowRight className="w-4 h-4" />
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         </div>

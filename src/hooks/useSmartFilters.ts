@@ -180,11 +180,12 @@ export const useSmartFilters = () => {
             return b[1].count - a[1].count;
         };
 
-        const formatOutput = (map: Map<any, { count: number, score: number }>) =>
+        const formatOutput = (map: Map<any, { count: number, score: number }>, minCount = 0) =>
             // Returning [key, count, score]
+            // !!key excludes '' entries (non-DeCS-matched especialidade/tema fallbacks from RPC)
             // If searching, only return items with some match score to avoid category contamination
             Array.from(map.entries())
-                .filter(([_, val]) => !hasQuery || val.score > 0)
+                .filter(([key, val]) => !!key && (!hasQuery || val.score > 0) && val.count >= minCount)
                 .sort(relevanceSorter)
                 .map(([key, val]) => [key, val.count, val.score] as [any, number, number]);
 
@@ -193,8 +194,8 @@ export const useSmartFilters = () => {
             // Anos usually better sorted numerically descending
             anos: Array.from(anos.entries()).sort((a, b) => b[0] - a[0]).map(([k, v]) => [k, v.count, 0] as [number, number, number]),
             areas: formatOutput(areas),
-            especialidades: formatOutput(especialidades),
-            temas: formatOutput(temas),
+            especialidades: formatOutput(especialidades, 6),
+            temas: formatOutput(temas, 6),
         };
     }, [combinations, selectedBanca, selectedAno, selectedArea, selectedEspecialidade, selectedTema, debouncedSearchQuery]);
 

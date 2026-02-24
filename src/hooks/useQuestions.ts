@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Question, FilterOptions } from '@/types/database';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -14,35 +14,165 @@ interface UseQuestionsOptions {
   status?: 'all_answered' | 'correct' | 'incorrect';
 }
 
+export interface SearchMeta {
+  layerUsed: number | null;
+  correctedTerm: string | null;
+  hasMore: boolean;
+}
+
+function parseQuestions(raw: any[]): Question[] {
+  return raw.map(q => {
+    let parsedOpcoes = typeof q.opcoes === 'string' ? JSON.parse(q.opcoes) : q.opcoes;
+
+    if (Array.isArray(parsedOpcoes) && parsedOpcoes.length > 0) {
+      parsedOpcoes = parsedOpcoes.map((opt: any) =>
+        typeof opt === 'object' && opt !== null && 'texto' in opt ? opt.texto : opt
+      );
+    } else {
+      parsedOpcoes = [
+        q.alternativa_a,
+        q.alternativa_b,
+        q.alternativa_c,
+        q.alternativa_d,
+        q.alternativa_e
+      ].filter(Boolean);
+    }
+
+    return {
+      ...q,
+      opcoes: parsedOpcoes,
+      campo_medico: q.output_grande_area || q.output_especialidade || 'Geral',
+    };
+  }) as Question[];
+}
+
 export function useQuestions(filters: UseQuestionsOptions = {}) {
   const { user } = useAuthContext();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchMeta, setSearchMeta] = useState<SearchMeta>({
+    layerUsed: null,
+    correctedTerm: null,
+    hasMore: false,
+  });
+  const [searchCursor, setSearchCursor] = useState<{ lastScore: number; lastId: string } | null>(null);
 
+  const isSearchMode = !!(filters.search && filters.search.trim().length > 0);
+
+  // Reset cursor and results whenever filters (including search text) change
   useEffect(() => {
+    setSearchCursor(null);
+    setQuestions([]);
     fetchQuestions();
-  }, [filters.banca, filters.ano, filters.campo_medico, filters.especialidade, filters.tema, filters.search, filters.hideAnswered, filters.status, user?.id]);
+  }, [
+    filters.banca,
+    filters.ano,
+    filters.campo_medico,
+    filters.especialidade,
+    filters.tema,
+    filters.search,
+    filters.hideAnswered,
+    filters.status,
+    user?.id,
+  ]);
 
+  // ─── Search RPC path (funnel: Layer 1 → 2 → 3) ───────────────────────────
+  const runSearchRpc = useCallback(async (
+    cursor: { lastScore: number; lastId: string } | null,
+    append: boolean
+  ) => {
+    // Guests: collect localStorage IDs for client-side hideAnswered filtering
+    const guestExcludeIds: string[] = [];
+    if (!user && filters.hideAnswered) {
+      try {
+        const localHistory = localStorage.getItem('medlibre_question_history');
+        if (localHistory) {
+          const history = JSON.parse(localHistory);
+          guestExcludeIds.push(...history.map((h: any) => h.question_id as string));
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+
+    const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)('search_questions', {
+      p_query: filters.search!.trim(),
+      p_banca: filters.banca && filters.banca !== 'all' ? filters.banca : null,
+      p_ano: filters.ano && filters.ano !== 0 ? filters.ano : null,
+      p_campo: filters.campo_medico && filters.campo_medico !== 'all' ? filters.campo_medico : null,
+      p_especialidade: filters.especialidade && filters.especialidade !== 'all' ? filters.especialidade : null,
+      p_tema: filters.tema && filters.tema !== 'all' ? filters.tema : null,
+      p_user_id: user?.id ?? null,
+      p_hide_answered: user ? (filters.hideAnswered ?? false) : false,
+      p_last_score: cursor?.lastScore ?? null,
+      p_last_id: cursor?.lastId ?? null,
+      p_limit: 20,
+    });
+
+    if (rpcError) throw new Error(rpcError.message);
+
+    const result = rpcResult as {
+      results: any[];
+      layer_used: number;
+      corrected_term: string | null;
+      next_cursor: { last_score: number; last_id: string } | null;
+    };
+
+    let rawResults = result.results || [];
+
+    // Client-side guest hideAnswered filter (no server history available)
+    if (guestExcludeIds.length > 0) {
+      rawResults = rawResults.filter((q: any) => !guestExcludeIds.includes(q.id));
+    }
+
+    const parsed = parseQuestions(rawResults);
+
+    if (append) {
+      setQuestions(prev => [...prev, ...parsed]);
+    } else {
+      setQuestions(parsed);
+    }
+
+    const nextCursor = result.next_cursor
+      ? { lastScore: result.next_cursor.last_score, lastId: result.next_cursor.last_id }
+      : null;
+
+    setSearchCursor(nextCursor);
+    setSearchMeta({
+      layerUsed: result.layer_used,
+      correctedTerm: result.corrected_term ?? null,
+      hasMore: !!nextCursor,
+    });
+  }, [
+    filters.search,
+    filters.banca,
+    filters.ano,
+    filters.campo_medico,
+    filters.especialidade,
+    filters.tema,
+    filters.hideAnswered,
+    user,
+  ]);
+
+  // ─── Primary fetch (resets state) ────────────────────────────────────────
   const fetchQuestions = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const hasFilters =
-        (filters.banca && filters.banca !== 'all') ||
-        (filters.ano && filters.ano !== 0) ||
-        (filters.campo_medico && filters.campo_medico !== 'all') ||
-        (filters.especialidade && filters.especialidade !== 'all') ||
-        (filters.tema && filters.tema !== 'all') ||
-        (filters.search && filters.search.trim().length > 0);
+      if (isSearchMode) {
+        await runSearchRpc(null, false);
+        return;
+      }
 
+      // ── Non-search paths (SRS RPC or fallback query) ──
       let data: any[] | null = null;
       let fetchError: any = null;
 
-      // Use RPC if user is logged in (Intelligent SRS-based Fetching)
-      // EXCEPT when using text search or status filtering, which are better handled by standard query for now
-      const canUseRPC = user && !filters.status && !(filters.search && filters.search.trim().length > 0);
+      // Use SRS RPC if user is logged in and no status filter
+      const canUseRPC = user && !filters.status;
 
       if (canUseRPC) {
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_study_session_questions', {
@@ -58,14 +188,13 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
         data = rpcData;
         fetchError = rpcError;
       } else {
-        // Fallback for guests OR text search OR status filtering
+        // Fallback for guests OR status filtering
         let query = supabase
           .from('questions')
           .select('*')
           .or('tem_anomalia.is.null,tem_anomalia.neq.1');
 
         if (filters.status && user) {
-          // Get question IDs from history based on status
           let historyQuery = supabase
             .from('user_question_history')
             .select('question_id')
@@ -86,8 +215,6 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
             const questionIds = historyItems.map(item => item.question_id);
             query = query.in('id', questionIds);
           } else {
-            // No history matches, return empty
-            data = [];
             setQuestions([]);
             setLoading(false);
             return;
@@ -104,22 +231,14 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           query = query.eq('output_grande_area', filters.campo_medico);
         }
         if (filters.especialidade && filters.especialidade !== 'all') {
-          query = query.eq('output_especialidade', filters.especialidade);
+          query = query.contains('especialidades_tags', [filters.especialidade]);
         }
         if (filters.tema && filters.tema !== 'all') {
           query = query.eq('output_tema', filters.tema);
         }
 
-        if (filters.search && filters.search.trim().length > 0) {
-          query = query.textSearch('enunciado', filters.search, {
-            type: 'websearch',
-            config: 'portuguese'
-          });
-        }
-
         if (filters.hideAnswered) {
           if (user) {
-            // For logged-in users in fallback paths (search/status), filter by server history
             const { data: answeredIds } = await supabase
               .from('user_question_history')
               .select('question_id')
@@ -130,7 +249,6 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
               query = query.not('id', 'in', `(${ids.join(',')})`);
             }
           } else {
-            // For guests, filter by local storage history
             const localHistory = localStorage.getItem('medlibre_question_history');
             if (localHistory) {
               try {
@@ -157,33 +275,8 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
       if (fetchError) {
         setError(fetchError.message);
       } else {
-        // Parse opcoes from JSONB and map campo_medico
-        const parsedQuestions = (data || []).map(q => {
-          let parsedOpcoes = typeof q.opcoes === 'string' ? JSON.parse(q.opcoes) : q.opcoes;
-
-          // Ensure opcoes is an array of strings
-          if (Array.isArray(parsedOpcoes) && parsedOpcoes.length > 0) {
-            parsedOpcoes = parsedOpcoes.map((opt: any) =>
-              typeof opt === 'object' && opt !== null && 'texto' in opt ? opt.texto : opt
-            );
-          } else {
-            // Fallback to alternativa_a...e
-            parsedOpcoes = [
-              q.alternativa_a,
-              q.alternativa_b,
-              q.alternativa_c,
-              q.alternativa_d,
-              q.alternativa_e
-            ].filter(Boolean);
-          }
-
-          return {
-            ...q,
-            opcoes: parsedOpcoes,
-            campo_medico: q.output_grande_area || q.output_especialidade || 'Geral',
-          };
-        }) as Question[];
-        setQuestions(parsedQuestions);
+        setQuestions(parseQuestions(data || []));
+        setSearchMeta({ layerUsed: null, correctedTerm: null, hasMore: false });
       }
     } catch (err) {
       setError('Erro ao carregar questões');
@@ -192,7 +285,29 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
     }
   };
 
-  return { questions, loading, error, refetch: fetchQuestions };
+  // ─── Load more (keyset pagination — search mode only) ────────────────────
+  const loadMore = useCallback(async () => {
+    if (!isSearchMode || !searchMeta.hasMore || loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      await runSearchRpc(searchCursor, true);
+    } catch (err) {
+      setError('Erro ao carregar mais questões');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [isSearchMode, searchMeta.hasMore, loadingMore, searchCursor, runSearchRpc]);
+
+  return {
+    questions,
+    loading,
+    loadingMore,
+    error,
+    searchMeta,
+    loadMore,
+    refetch: fetchQuestions,
+  };
 }
 
 export function useFilterOptions() {
