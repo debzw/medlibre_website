@@ -54,41 +54,142 @@ const updateQuestionsCache = (questionId: string, campo_medico: string, banca: s
 
 export type TimeFilter = 'today' | 'week' | 'month' | 'all';
 
+// Legacy type kept for any remaining references during migration
 export type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
-const DIFFICULTY_TO_QUALITY: Record<DifficultyLevel, number> = {
-  easy: 5,
-  medium: 3,
-  hard: 1,
+// ─── FSRS v4 ──────────────────────────────────────────────────────────────────
+
+// 5-level cognitive effort scale:
+// 0 = Apagão (complete blackout) → FSRS Again
+// 1 = Muito difícil              → FSRS Hard
+// 2 = Com esforço                → FSRS Hard
+// 3 = Bom                        → FSRS Good
+// 4 = Instantâneo (instant)      → FSRS Easy
+export type ConfidenceLevel = 0 | 1 | 2 | 3 | 4;
+
+// Map confidence (0-4) → FSRS rating (1=Again, 2=Hard, 3=Good, 4=Easy)
+const CONFIDENCE_TO_RATING: Record<ConfidenceLevel, 1 | 2 | 3 | 4> = {
+  0: 1,
+  1: 2,
+  2: 2,
+  3: 3,
+  4: 4,
 };
 
-function applySM2(easeFactor: number, interval: number, streak: number, quality: number) {
-  const newEF = Math.max(
-    1.3,
-    easeFactor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
-  );
-  let newInterval: number;
-  let newStreak: number;
+// FSRS-4.5 default weights (open-spaced-repetition/fsrs4anki, 2024)
+const FSRS_W = [
+  0.40255,  // W[0]  S₀(Again)
+  1.18385,  // W[1]  S₀(Hard)
+  3.17365,  // W[2]  S₀(Good)
+  15.6945,  // W[3]  S₀(Easy)
+  7.1949,   // W[4]  D₀ intercept
+  0.5345,   // W[5]  D₀ exponent
+  1.4604,   // W[6]  D update Δ per rating
+  0.0046,   // W[7]  D mean-reversion rate
+  1.54575,  // W[8]  Recall S: growth coefficient
+  0.1192,   // W[9]  Recall S: S exponent
+  1.01925,  // W[10] Recall S: R exponent
+  1.9395,   // W[11] Forget S: coefficient
+  0.11,     // W[12] Forget S: D exponent
+  0.29605,  // W[13] Forget S: (S+1) exponent
+  2.2698,   // W[14] Forget S: R exponent
+  0.2315,   // W[15] Hard penalty   (< 1 → reduces stability vs Good)
+  2.9898,   // W[16] Easy bonus     (> 1 → increases stability vs Good)
+];
 
-  if (quality < 3) {
-    newInterval = 1;
-    newStreak = 0;
-  } else {
-    newStreak = streak + 1;
-    if (streak === 0) newInterval = 1;
-    else if (streak === 1) newInterval = 6;
-    else newInterval = Math.round(interval * newEF);
+interface FSRSState {
+  stability: number | null;
+  difficulty: number | null;
+  interval: number;
+  lastReviewed: string;
+  streak: number;
+}
+
+interface FSRSResult {
+  stability: number;
+  difficulty: number;
+  interval: number;
+  next_review: string;
+  last_reviewed: string;
+  ease_factor: number;    // legacy field kept at 2.5 (not used by FSRS)
+  streak: number;
+  last_confidence: number;
+}
+
+function applyFSRS4(state: FSRSState, confidence: ConfidenceLevel): FSRSResult {
+  const rating = CONFIDENCE_TO_RATING[confidence];
+  const W = FSRS_W;
+  const now = new Date();
+
+  // ── First review (no prior FSRS data) ──────────────────────────────────────
+  if (state.stability === null || state.difficulty === null) {
+    const S0 = W[rating - 1];
+    const D0 = Math.min(10, Math.max(1, W[4] - Math.exp(W[5] * (rating - 1)) + 1));
+    const interval = Math.max(1, Math.round(S0));
+    const nextReview = new Date(now);
+    nextReview.setDate(nextReview.getDate() + interval);
+    return {
+      stability: parseFloat(S0.toFixed(4)),
+      difficulty: parseFloat(D0.toFixed(4)),
+      interval,
+      next_review: nextReview.toISOString(),
+      last_reviewed: now.toISOString(),
+      ease_factor: 2.5,
+      streak: rating >= 3 ? 1 : 0,
+      last_confidence: confidence,
+    };
   }
 
-  const nextReview = new Date();
-  nextReview.setDate(nextReview.getDate() + newInterval);
+  // ── Subsequent review ───────────────────────────────────────────────────────
+  const S = state.stability;
+  const D = state.difficulty;
+  const t = Math.max(0, (now.getTime() - new Date(state.lastReviewed).getTime()) / 86400000);
+
+  // Retrievability: R = 0.9^(t/S)
+  const R = Math.pow(0.9, t / S);
+
+  let newS: number;
+
+  if (rating === 1) {
+    // Forgot — forget stability formula:
+    // S_f = W[11] * D^(-W[12]) * ((S+1)^W[13] - 1) * exp(W[14]*(1-R))
+    newS = W[11]
+      * Math.pow(D, -W[12])
+      * (Math.pow(S + 1, W[13]) - 1)
+      * Math.exp(W[14] * (1 - R));
+  } else {
+    // Recalled — recall stability formula:
+    // S_r = S * (exp(W[8]*(11-D)*S^(-W[9])*(exp(W[10]*(1-R))-1)) + 1) * penalty * bonus
+    const hardPenalty = rating === 2 ? W[15] : 1.0;
+    const easyBonus   = rating === 4 ? W[16] : 1.0;
+    newS = S
+      * (Math.exp(W[8] * (11 - D) * Math.pow(S, -W[9]) * (Math.exp(W[10] * (1 - R)) - 1)) + 1)
+      * hardPenalty
+      * easyBonus;
+  }
+
+  // Clamp stability: min 0.1 days, max 100 years
+  newS = Math.min(36500, Math.max(0.1, newS));
+
+  // Difficulty update with mean reversion toward D₀(Again) = W[4]
+  // D' = D + W[6]*(3 - rating)  [raw delta]
+  // D' = W[7]*W[4] + (1-W[7])*D'  [mean reversion, W[7]=0.0046 is very small]
+  const D_raw = D + W[6] * (3 - rating);
+  const newD = Math.min(10, Math.max(1, W[7] * W[4] + (1 - W[7]) * D_raw));
+
+  const interval = Math.max(1, Math.round(newS));
+  const nextReview = new Date(now);
+  nextReview.setDate(nextReview.getDate() + interval);
 
   return {
-    ease_factor: parseFloat(newEF.toFixed(4)),
-    interval: newInterval,
-    streak: newStreak,
+    stability: parseFloat(newS.toFixed(4)),
+    difficulty: parseFloat(newD.toFixed(4)),
+    interval,
     next_review: nextReview.toISOString(),
-    last_reviewed: new Date().toISOString(),
+    last_reviewed: now.toISOString(),
+    ease_factor: 2.5,
+    streak: rating >= 3 ? state.streak + 1 : 0,
+    last_confidence: confidence,
   };
 }
 
@@ -251,23 +352,29 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
   const saveSRSFeedbackMutation = useMutation({
     mutationFn: async ({
       questionId,
-      difficulty,
+      confidence,
     }: {
       questionId: string;
-      difficulty: DifficultyLevel;
+      confidence: ConfidenceLevel;
     }) => {
-      const quality = DIFFICULTY_TO_QUALITY[difficulty];
       if (!user || DEV_MODE) return;
 
       const { data: existing } = await supabase
         .from('user_spaced_repetition')
-        .select('ease_factor, interval, streak')
+        .select('stability, difficulty, interval, streak, last_reviewed')
         .eq('user_id', user.id)
         .eq('question_id', questionId)
         .maybeSingle();
 
-      const base = existing ?? { ease_factor: 2.5, interval: 0, streak: 0 };
-      const updates = applySM2(base.ease_factor, base.interval, base.streak, quality);
+      const state: FSRSState = {
+        stability:    existing?.stability    ?? null,
+        difficulty:   existing?.difficulty   ?? null,
+        interval:     existing?.interval     ?? 0,
+        lastReviewed: existing?.last_reviewed ?? new Date().toISOString(),
+        streak:       existing?.streak       ?? 0,
+      };
+
+      const updates = applyFSRS4(state, confidence);
 
       const { error } = await supabase
         .from('user_spaced_repetition')

@@ -86,6 +86,10 @@ export interface UserSpacedRepetition {
     next_review: string;
     last_reviewed: string;
     created_at: string;
+    // FSRS v4 fields (null for legacy SM-2 records)
+    stability: number | null;
+    difficulty: number | null;
+    last_confidence: number | null;
 }
 
 export interface UserThemeStats {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Check, X, MoreVertical, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuestionHistory } from '@/hooks/useQuestionHistory';
-import type { DifficultyLevel } from '@/hooks/useQuestionHistory';
+import type { ConfidenceLevel } from '@/hooks/useQuestionHistory';
 import { MetacognitiveFeedback } from './MetacognitiveFeedback';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
@@ -68,9 +68,9 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
     onAnswered(index, isCorrect);
   };
 
-  const handleSRSFeedback = async (difficulty: DifficultyLevel) => {
+  const handleSRSFeedback = async (confidence: ConfidenceLevel) => {
     if (user) {
-      await saveSRSFeedback({ questionId: question.id, difficulty });
+      await saveSRSFeedback({ questionId: question.id, confidence });
     }
   };
 
