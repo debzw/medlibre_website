@@ -46,7 +46,7 @@ export default function AboutPage() {
                             <h2 className="text-center text-4xl font-black mb-12">Nosso Manifesto</h2>
                             <div className="space-y-6 text-lg leading-relaxed text-muted-foreground">
                                 <p>
-                                    O medlibre nasceu de uma indignação: o mercado de educação médica tornou-se uma indústria de "cursinhos"
+                                    O Medlibre nasceu de uma indignação: o mercado de educação médica tornou-se uma indústria de "cursinhos"
                                     que cobram fortunas por um modelo de ensino já ultrapassado.
                                 </p>
                                 <p>

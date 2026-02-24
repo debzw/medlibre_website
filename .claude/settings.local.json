@@ -3,7 +3,8 @@
     "allow": [
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(git -C /c/medlibre_website log --all --full-history --source -- \"*decs*\")"
+      "Bash(git -C /c/Medlibre_website log --all --full-history --source -- \"*decs*\")",
+      "Bash(ls:*)"
     ]
   }
 }

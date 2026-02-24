@@ -4,8 +4,8 @@ export const Footer = () => {
             <div className="container mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left mb-8">
                     <div className="space-y-4">
-                        <img src="/logo_withname.svg" alt="medlibre" className="h-8 mx-auto md:mx-0 dark:hidden" />
-                        <img src="/logo_withname_white.svg" alt="medlibre" className="h-8 mx-auto md:mx-0 hidden dark:block" />
+                        <img src="/logo_withname.svg" alt="Medlibre" className="h-8 mx-auto md:mx-0 dark:hidden" />
+                        <img src="/logo_withname_white.svg" alt="Medlibre" className="h-8 mx-auto md:mx-0 hidden dark:block" />
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             A plataforma inteligente para quem quer passar na residência médica sem perder tempo com vídeo-aulas.
                         </p>
@@ -27,7 +27,7 @@ export const Footer = () => {
                     </div>
                 </div>
                 <div className="pt-8 border-t border-border/50 text-center text-sm text-muted-foreground">
-                    <p>© {new Date().getFullYear()} medlibre. Todos os direitos reservados.</p>
+                    <p>© {new Date().getFullYear()} Medlibre. Todos os direitos reservados.</p>
                 </div>
             </div>
         </footer>

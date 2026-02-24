@@ -39,8 +39,8 @@ export default function LandingPageClient() {
                     <div className="space-y-6">
                         <div className="flex flex-col items-center gap-6">
                             <div className="animate-fade-in">
-                                <img src="/logo_withname.svg" alt="medlibre" className="h-20 md:h-32 mx-auto dark:hidden" />
-                                <img src="/logo_withname_white.svg" alt="medlibre" className="h-20 md:h-32 mx-auto hidden dark:block" />
+                                <img src="/logo_withname.svg" alt="Medlibre" className="h-20 md:h-32 mx-auto dark:hidden" />
+                                <img src="/logo_withname_white.svg" alt="edlibre" className="h-20 md:h-32 mx-auto hidden dark:block" />
                             </div>
                         </div>
                         <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">

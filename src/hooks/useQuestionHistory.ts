@@ -54,6 +54,44 @@ const updateQuestionsCache = (questionId: string, campo_medico: string, banca: s
 
 export type TimeFilter = 'today' | 'week' | 'month' | 'all';
 
+export type DifficultyLevel = 'easy' | 'medium' | 'hard';
+
+const DIFFICULTY_TO_QUALITY: Record<DifficultyLevel, number> = {
+  easy: 5,
+  medium: 3,
+  hard: 1,
+};
+
+function applySM2(easeFactor: number, interval: number, streak: number, quality: number) {
+  const newEF = Math.max(
+    1.3,
+    easeFactor + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
+  );
+  let newInterval: number;
+  let newStreak: number;
+
+  if (quality < 3) {
+    newInterval = 1;
+    newStreak = 0;
+  } else {
+    newStreak = streak + 1;
+    if (streak === 0) newInterval = 1;
+    else if (streak === 1) newInterval = 6;
+    else newInterval = Math.round(interval * newEF);
+  }
+
+  const nextReview = new Date();
+  nextReview.setDate(nextReview.getDate() + newInterval);
+
+  return {
+    ease_factor: parseFloat(newEF.toFixed(4)),
+    interval: newInterval,
+    streak: newStreak,
+    next_review: nextReview.toISOString(),
+    last_reviewed: new Date().toISOString(),
+  };
+}
+
 export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
@@ -210,6 +248,38 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
     },
   });
 
+  const saveSRSFeedbackMutation = useMutation({
+    mutationFn: async ({
+      questionId,
+      difficulty,
+    }: {
+      questionId: string;
+      difficulty: DifficultyLevel;
+    }) => {
+      const quality = DIFFICULTY_TO_QUALITY[difficulty];
+      if (!user || DEV_MODE) return;
+
+      const { data: existing } = await supabase
+        .from('user_spaced_repetition')
+        .select('ease_factor, interval, streak')
+        .eq('user_id', user.id)
+        .eq('question_id', questionId)
+        .maybeSingle();
+
+      const base = existing ?? { ease_factor: 2.5, interval: 0, streak: 0 };
+      const updates = applySM2(base.ease_factor, base.interval, base.streak, quality);
+
+      const { error } = await supabase
+        .from('user_spaced_repetition')
+        .upsert(
+          { user_id: user.id, question_id: questionId, ...updates },
+          { onConflict: 'user_id,question_id' }
+        );
+
+      if (error) throw error;
+    },
+  });
+
   const isQuestionAnswered = useCallback((questionId: string): boolean => {
     return history.some(h => h.question_id === questionId);
   }, [history]);
@@ -234,6 +304,7 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
     },
     isLoading,
     saveAnswer: saveAnswerMutation.mutateAsync,
+    saveSRSFeedback: saveSRSFeedbackMutation.mutateAsync,
     isQuestionAnswered,
     getQuestionAttempts,
   };

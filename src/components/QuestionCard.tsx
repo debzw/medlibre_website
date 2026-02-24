@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Check, X, MoreVertical, Flag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuestionHistory } from '@/hooks/useQuestionHistory';
+import type { DifficultyLevel } from '@/hooks/useQuestionHistory';
+import { MetacognitiveFeedback } from './MetacognitiveFeedback';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -26,7 +28,7 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const startTimeRef = useRef<number>(Date.now());
-  const { saveAnswer } = useQuestionHistory();
+  const { saveAnswer, saveSRSFeedback } = useQuestionHistory();
   const { user, userType } = useAuthContext();
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
@@ -64,6 +66,12 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
     }
 
     onAnswered(index, isCorrect);
+  };
+
+  const handleSRSFeedback = async (difficulty: DifficultyLevel) => {
+    if (user) {
+      await saveSRSFeedback({ questionId: question.id, difficulty });
+    }
   };
 
   const getOptionClass = (index: number): string => {
@@ -263,6 +271,9 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
               </p>
             </div>
           )}
+
+          {/* Feedback Metacognitivo – alimenta o algoritmo SRS */}
+          <MetacognitiveFeedback onFeedback={handleSRSFeedback} isLoggedIn={!!user} />
         </div>
       )}
 

@@ -7,7 +7,7 @@ import {
 
 const faqs = [
     {
-        question: 'O medlibre é realmente gratuito?',
+        question: 'O Medlibre é realmente gratuito?',
         answer: 'Sim! Nossa missão é democratizar o acesso. Temos um plano gratuito generoso que permite estudar todos os dias. O plano Premium é para quem quer funcionalidades ilimitadas e apoiar o projeto.',
     },
     {
@@ -16,7 +16,7 @@ const faqs = [
     },
     {
         question: 'Quais bancas estão disponíveis?',
-        answer: 'Cobre as principais bancas do país, incluindo ENARE, USP-SP, UNIFESP, SUS-SP, UERJ, AMRIGS, entre outras. A base é atualizada constantemente.',
+        answer: 'Cobre as principais bancas do país, incluindo UNIFESP, ENARE, USP-SP, SUS-SP, UERJ, AMRIGS, entre outras. A base é atualizada constantemente.',
     },
     {
         question: 'Como funciona a Repetição Espaçada?',

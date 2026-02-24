@@ -1,7 +1,7 @@
 export const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "EducationalOrganization",
-    "name": "medlibre",
+    "name": "Medlibre",
     "description": "Plataforma gratuita de preparação para residência médica",
     "url": "https://medlibre.com.br",
     "logo": "https://medlibre.com.br/logo.png",
@@ -19,7 +19,7 @@ export const organizationSchema = {
 export const webApplicationSchema = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    "name": "medlibre",
+    "name": "Medlibre",
     "applicationCategory": "EducationalApplication",
     "offers": {
         "@type": "Offer",
@@ -35,10 +35,10 @@ export const faqSchema = {
     "mainEntity": [
         {
             "@type": "Question",
-            "name": "O medlibre é realmente gratuito?",
+            "name": "O Medlibre é realmente gratuito?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Sim! O medlibre oferece acesso gratuito com 20 questões por dia no plano gratuito e 5 questões no modo visitante. Temos também uma opção premium ilimitada."
+                "text": "Sim! O Medlibre oferece acesso gratuito com 20 questões por dia no plano gratuito e 5 questões no modo visitante. Temos também uma opção premium ilimitada."
             }
         },
         {

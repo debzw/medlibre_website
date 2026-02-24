@@ -170,11 +170,10 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
       // ── Non-search paths (SRS RPC or fallback query) ──
       let data: any[] | null = null;
       let fetchError: any = null;
+      let usedRPC = false;
 
-      // Use SRS RPC if user is logged in and no status filter
-      const canUseRPC = user && !filters.status;
-
-      if (canUseRPC) {
+      // Try SRS RPC if user is logged in and no status filter
+      if (user && !filters.status) {
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_study_session_questions', {
           p_user_id: user.id,
           p_limit: 50,
@@ -185,9 +184,16 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           p_especialidade: filters.especialidade !== 'all' ? filters.especialidade : null,
           p_tema: filters.tema !== 'all' ? filters.tema : null
         });
-        data = rpcData;
-        fetchError = rpcError;
-      } else {
+
+        if (!rpcError) {
+          data = rpcData;
+          usedRPC = true;
+        } else {
+          console.warn('SRS RPC falhou, usando query simples como fallback:', rpcError.message);
+        }
+      }
+
+      if (!usedRPC) {
         // Fallback for guests OR status filtering
         let query = supabase
           .from('questions')
