@@ -7,13 +7,13 @@ import { UserProfile } from '@/types/database';
 export const DEV_MODE = false;
 
 // UUID válido para o usuário dev (para compatibilidade com o banco de dados)
-const DEV_USER_ID = '00000000-0000-0000-0000-000000000001';
+const DEV_USER_ID = 'e34e0ceb-2396-42e5-b9fd-039ffbb44c52';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(
     DEV_MODE ? ({
       id: DEV_USER_ID,
-      email: 'dev@teste.com',
+      email: 'deborabitzum@gmail.com',
       aud: 'authenticated',
       created_at: new Date().toISOString()
     } as any) : null
@@ -23,7 +23,7 @@ export function useAuth() {
     DEV_MODE ? ({
       access_token: 'fake-token',
       token_type: 'bearer',
-      user: { id: DEV_USER_ID, email: 'dev@teste.com' }
+      user: { id: DEV_USER_ID, email: 'deborabitzum@gmail.com' }
     } as any) : null
   );
 
@@ -37,7 +37,7 @@ export function useAuth() {
       theme_preference: 'dark',
       preferred_banca: null,
       full_name: null,
-      email: 'dev@teste.com',
+      email: 'deborabitzum@gmail.com',
       avatar_url: null,
       locale: 'pt-BR',
       university: null,

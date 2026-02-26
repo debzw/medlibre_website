@@ -4,7 +4,8 @@
       "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(git -C /c/Medlibre_website log --all --full-history --source -- \"*decs*\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git -C /c/medlibre_website diff src/components/dashboard/widgets/SpecialtyPerformanceWidget.tsx)"
     ]
   }
 }
