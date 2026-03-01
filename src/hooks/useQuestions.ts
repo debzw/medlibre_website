@@ -161,134 +161,160 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
     setLoading(true);
     setError(null);
 
-    try {
-      if (isSearchMode) {
-        await runSearchRpc(null, false);
-        return;
-      }
+    const MAX_RETRIES = 2;
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-      // ── Non-search paths (SRS RPC or fallback query) ──
-      let data: any[] | null = null;
-      let fetchError: any = null;
-      let usedRPC = false;
-
-      // Try SRS RPC if user is logged in and no status filter
-      if (user && !filters.status) {
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_study_session_questions', {
-          p_user_id: user.id,
-          p_limit: 50,
-          p_hide_answered: filters.hideAnswered || false,
-          p_banca: filters.banca !== 'all' ? filters.banca : null,
-          p_ano: filters.ano !== 0 ? filters.ano : null,
-          p_campo: filters.campo_medico !== 'all' ? filters.campo_medico : null,
-          p_especialidade: filters.especialidade !== 'all' ? filters.especialidade : null,
-          p_tema: filters.tema !== 'all' ? filters.tema : null
-        });
-
-        if (!rpcError) {
-          data = rpcData;
-          usedRPC = true;
-        } else {
-          console.warn('SRS RPC falhou, usando query simples como fallback:', rpcError.message);
+    let attempt = 0;
+    while (attempt <= MAX_RETRIES) {
+      try {
+        if (isSearchMode) {
+          await runSearchRpc(null, false);
+          return;
         }
-      }
 
-      if (!usedRPC) {
-        // Fallback for guests OR status filtering
-        let query = supabase
-          .from('questions')
-          .select('*')
-          .or('tem_anomalia.is.null,tem_anomalia.neq.1');
+        // ── Non-search paths (SRS RPC or fallback query) ──
+        let data: any[] | null = null;
+        let fetchError: any = null;
+        let usedRPC = false;
 
-        if (filters.status && user) {
-          let historyQuery = supabase
-            .from('user_question_history')
-            .select('question_id')
-            .eq('user_id', user.id);
+        // Try SRS RPC if user is logged in and no status filter
+        if (user && !filters.status) {
+          const { data: rpcData, error: rpcError } = await supabase.rpc('get_study_session_questions', {
+            p_user_id: user.id,
+            p_limit: 50,
+            p_hide_answered: filters.hideAnswered || false,
+            p_banca: filters.banca !== 'all' ? filters.banca : null,
+            p_ano: filters.ano !== 0 ? filters.ano : null,
+            p_campo: filters.campo_medico !== 'all' ? filters.campo_medico : null,
+            p_especialidade: filters.especialidade !== 'all' ? filters.especialidade : null,
+            p_tema: filters.tema !== 'all' ? filters.tema : null
+          });
 
-          if (filters.status === 'correct') {
-            historyQuery = historyQuery.eq('is_correct', true);
-          } else if (filters.status === 'incorrect') {
-            historyQuery = historyQuery.eq('is_correct', false);
-          }
-
-          const { data: historyItems, error: historyError } = await historyQuery;
-
-          if (historyError) {
-            console.error('Error fetching history for status filter:', historyError);
-            data = [];
-          } else if (historyItems && historyItems.length > 0) {
-            const questionIds = historyItems.map(item => item.question_id);
-            query = query.in('id', questionIds);
+          if (!rpcError) {
+            data = rpcData;
+            usedRPC = true;
           } else {
-            setQuestions([]);
-            setLoading(false);
-            return;
+            if (rpcError.message.includes('statement timeout') && attempt < MAX_RETRIES) {
+              attempt++;
+              console.warn(`Timeout detectado. Tentativa ${attempt} de ${MAX_RETRIES}...`);
+              await delay(500 * attempt);
+              continue;
+            }
+            console.warn('SRS RPC falhou, usando query simples como fallback:', rpcError.message);
           }
         }
 
-        if (filters.banca && filters.banca !== 'all') {
-          query = query.eq('banca', filters.banca);
-        }
-        if (filters.ano && filters.ano !== 0) {
-          query = query.eq('ano', filters.ano);
-        }
-        if (filters.campo_medico && filters.campo_medico !== 'all') {
-          query = query.eq('output_grande_area', filters.campo_medico);
-        }
-        if (filters.especialidade && filters.especialidade !== 'all') {
-          query = query.contains('especialidades_tags', [filters.especialidade]);
-        }
-        if (filters.tema && filters.tema !== 'all') {
-          query = query.eq('output_tema', filters.tema);
-        }
+        if (!usedRPC) {
+          // Fallback for guests OR status filtering
+          let query = supabase
+            .from('questions')
+            .select('*')
+            .or('tem_anomalia.is.null,tem_anomalia.neq.1');
 
-        if (filters.hideAnswered) {
-          if (user) {
-            const { data: answeredIds } = await supabase
+          if (filters.status && user) {
+            let historyQuery = supabase
               .from('user_question_history')
               .select('question_id')
               .eq('user_id', user.id);
 
-            if (answeredIds && answeredIds.length > 0) {
-              const ids = answeredIds.map(a => a.question_id);
-              query = query.not('id', 'in', `(${ids.join(',')})`);
+            if (filters.status === 'correct') {
+              historyQuery = historyQuery.eq('is_correct', true);
+            } else if (filters.status === 'incorrect') {
+              historyQuery = historyQuery.eq('is_correct', false);
             }
-          } else {
-            const localHistory = localStorage.getItem('medlibre_question_history');
-            if (localHistory) {
-              try {
-                const history = JSON.parse(localHistory);
-                const ids = history.map((h: any) => h.question_id);
-                if (ids.length > 0) {
-                  query = query.not('id', 'in', `(${ids.join(',')})`);
+
+            const { data: historyItems, error: historyError } = await historyQuery;
+
+            if (historyError) {
+              console.error('Error fetching history for status filter:', historyError);
+              data = [];
+            } else if (historyItems && historyItems.length > 0) {
+              const questionIds = historyItems.map(item => item.question_id);
+              query = query.in('id', questionIds);
+            } else {
+              setQuestions([]);
+              setLoading(false);
+              return;
+            }
+          }
+
+          if (filters.banca && filters.banca !== 'all') {
+            query = query.eq('banca', filters.banca);
+          }
+          if (filters.ano && filters.ano !== 0) {
+            query = query.eq('ano', filters.ano);
+          }
+          if (filters.campo_medico && filters.campo_medico !== 'all') {
+            query = query.eq('output_grande_area', filters.campo_medico);
+          }
+          if (filters.especialidade && filters.especialidade !== 'all') {
+            query = query.contains('especialidades_tags', [filters.especialidade]);
+          }
+          if (filters.tema && filters.tema !== 'all') {
+            query = query.eq('output_tema', filters.tema);
+          }
+
+          if (filters.hideAnswered) {
+            if (user) {
+              const { data: answeredIds } = await supabase
+                .from('user_question_history')
+                .select('question_id')
+                .eq('user_id', user.id);
+
+              if (answeredIds && answeredIds.length > 0) {
+                const ids = answeredIds.map(a => a.question_id);
+                query = query.not('id', 'in', `(${ids.join(',')})`);
+              }
+            } else {
+              const localHistory = localStorage.getItem('medlibre_question_history');
+              if (localHistory) {
+                try {
+                  const history = JSON.parse(localHistory);
+                  const ids = history.map((h: any) => h.question_id);
+                  if (ids.length > 0) {
+                    query = query.not('id', 'in', `(${ids.join(',')})`);
+                  }
+                } catch (e) {
+                  console.error('Error parsing local history for filtering:', e);
                 }
-              } catch (e) {
-                console.error('Error parsing local history for filtering:', e);
               }
             }
           }
+
+          const { data: filteredData, error: filteredError } = await query
+            .limit(50)
+            .order('created_at', { ascending: false });
+
+          if (filteredError?.message.includes('statement timeout') && attempt < MAX_RETRIES) {
+            attempt++;
+            console.warn(`Timeout detectado no fallback. Tentativa ${attempt} de ${MAX_RETRIES}...`);
+            await delay(800 * attempt);
+            continue;
+          }
+
+          data = filteredData;
+          fetchError = filteredError;
         }
 
-        const { data: filteredData, error: filteredError } = await query
-          .limit(50)
-          .order('created_at', { ascending: false });
+        if (fetchError) {
+          setError(fetchError.message);
+        } else {
+          setQuestions(parseQuestions(data || []));
+          setSearchMeta({ layerUsed: null, correctedTerm: null, hasMore: false });
+        }
 
-        data = filteredData;
-        fetchError = filteredError;
+        break; // Sucesso ou erro definitivo
+      } catch (err: any) {
+        if (err.message?.includes('statement timeout') && attempt < MAX_RETRIES) {
+          attempt++;
+          await delay(500 * attempt);
+          continue;
+        }
+        setError('Erro ao carregar questões');
+        break;
       }
-
-      if (fetchError) {
-        setError(fetchError.message);
-      } else {
-        setQuestions(parseQuestions(data || []));
-        setSearchMeta({ layerUsed: null, correctedTerm: null, hasMore: false });
-      }
-    } catch (err) {
-      setError('Erro ao carregar questões');
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   // ─── Load more (keyset pagination — search mode only) ────────────────────
