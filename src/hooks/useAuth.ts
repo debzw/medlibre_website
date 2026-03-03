@@ -43,6 +43,7 @@ export function useAuth() {
       university: null,
       age: null,
       graduation_year: null,
+      email_confirmed: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }) : null
@@ -66,7 +67,7 @@ export function useAuth() {
 
         if (session?.user) {
           setTimeout(() => {
-            fetchProfile(session.user.id);
+            fetchProfile(session.user.id, session.user);
           }, 0);
         } else {
           setProfile(null);
@@ -80,7 +81,7 @@ export function useAuth() {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, session.user);
       } else {
         setLoading(false);
       }
@@ -89,9 +90,12 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, sessionUser?: User) => {
     // Em modo DEV, ignoramos chamadas ao banco real para evitar erros 403/401
     if (DEV_MODE) return;
+
+    // Usa sessionUser passado como parâmetro para evitar race condition com o state
+    const currentUser = sessionUser ?? user;
 
     try {
       const { data, error } = await supabase
@@ -104,16 +108,29 @@ export function useAuth() {
         console.error('Error fetching profile:', error);
       } else if (data) {
         setProfile(data as UserProfile);
+        // Perfil criado pelo trigger com email_confirmed: false → envia e-mail de verificação
+        // localStorage evita reenvio em refreshes enquanto o usuário aguarda confirmação
+        if (data.email_confirmed === false) {
+          const sentKey = `emailVerificationSent_${userId}`;
+          if (!localStorage.getItem(sentKey)) {
+            localStorage.setItem(sentKey, 'true');
+            fetch('/api/auth/send-verification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId, email: currentUser?.email }),
+            }).catch(err => console.error('Error sending verification email:', err));
+          }
+        }
       } else {
-        // PERFIL NÃO EXISTE: Vamos criar um perfil padrão (caso o trigger do banco falhe ou não exista)
+        // PERFIL NÃO EXISTE: novo usuário — cria perfil com email_confirmed: false
         console.log("Perfil não encontrado. Criando perfil padrão...");
-        const metadata = user?.user_metadata || {};
+        const metadata = currentUser?.user_metadata || {};
         const { data: newProfile, error: createError } = await supabase
           .from('user_profiles')
           .insert([
             {
               id: userId,
-              email: user?.email || null,
+              email: currentUser?.email || null,
               full_name: metadata.full_name || null,
               avatar_url: metadata.avatar_url || metadata.picture || null,
               locale: metadata.locale || null,
@@ -121,7 +138,8 @@ export function useAuth() {
               tier: 'free',
               questions_answered_today: 0,
               last_reset_date: new Date().toISOString().split('T')[0],
-              theme_preference: 'dark'
+              theme_preference: 'dark',
+              email_confirmed: false,
             }
           ])
           .select()
@@ -131,6 +149,12 @@ export function useAuth() {
           console.error('Error creating default profile:', createError);
         } else if (newProfile) {
           setProfile(newProfile as UserProfile);
+          // Dispara envio do e-mail de verificação (não bloqueia o fluxo)
+          fetch('/api/auth/send-verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, email: currentUser?.email }),
+          }).catch(err => console.error('Error sending verification email:', err));
         }
       }
     } catch (err) {
@@ -141,7 +165,7 @@ export function useAuth() {
   };
 
   // Funções de login mantidas (mas não farão nada visualmente se DEV_MODE estiver travado)
-  const signInWithGoogle = async () => { if (DEV_MODE) return { error: null }; const redirectUrl = window.location.origin; const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl } }); return { error }; };
+  const signInWithGoogle = async () => { if (DEV_MODE) return { error: null }; const redirectUrl = `${window.location.origin}/auth/callback`; const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: redirectUrl, scopes: 'email profile' } }); return { error }; };
   const signInWithEmail = async (email: string, password: string) => { if (DEV_MODE) return { error: null }; const { error } = await supabase.auth.signInWithPassword({ email, password }); return { error }; };
   const signUpWithEmail = async (email: string, password: string) => { if (DEV_MODE) return { error: null }; const redirectUrl = window.location.origin; const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectUrl } }); return { error }; };
   const signOut = async () => {

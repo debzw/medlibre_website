@@ -53,6 +53,7 @@ export interface UserProfile {
   university: string | null;
   age: number | null;
   graduation_year: number | null;
+  email_confirmed: boolean;
   created_at: string;
   updated_at: string;
 }

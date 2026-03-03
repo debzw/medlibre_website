@@ -9,6 +9,7 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
+  needsEmailVerification: boolean;
   userType: UserType;
   questionsUsed: number;
   canAnswerMore: () => boolean;
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextType = {
     ...auth,
+    needsEmailVerification: auth.profile?.email_confirmed === false,
     userType: usage.userType,
     questionsUsed: usage.questionsUsed,
     canAnswerMore: usage.canAnswerMore,

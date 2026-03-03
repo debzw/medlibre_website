@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -12,6 +12,8 @@ export default function AuthPage() {
     const [loading, setLoading] = useState(false);
     const { user, signInWithGoogle } = useAuthContext();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const errorParam = searchParams.get('error');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -54,6 +56,14 @@ export default function AuthPage() {
                             Faça login ou cadastre-se via Google
                         </p>
                     </div>
+
+                    {(errorParam === 'link_expired' || errorParam === 'verification_expired') && (
+                        <p className="text-destructive text-sm bg-destructive/10 rounded-md px-3 py-2 text-center mb-6">
+                            {errorParam === 'link_expired'
+                                ? 'Seu link de confirmação expirou e a conta foi removida. Cadastre-se novamente.'
+                                : 'O prazo de 15 minutos para confirmar o e-mail expirou. Por favor, faça um novo cadastro.'}
+                        </p>
+                    )}
 
                     <Button
                         variant="outline"

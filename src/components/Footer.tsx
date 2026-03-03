@@ -15,6 +15,7 @@ export const Footer = () => {
                         <a href="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">Home</a>
                         <a href="/app" className="text-sm text-muted-foreground hover:text-primary transition-colors">Praticar</a>
                         <a href="/pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors">Preços</a>
+                        <a href="/profile" className="text-sm text-muted-foreground hover:text-primary transition-colors">Conta</a>
                     </div>
                     <div className="flex flex-col gap-2">
                         <h4 className="font-bold uppercase text-xs tracking-widest text-primary">Suporte</h4>
