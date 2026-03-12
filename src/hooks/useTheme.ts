@@ -27,8 +27,8 @@ export function useTheme(options: UseThemeOptions = {}) {
         return 'dark';
       }
 
-      // Default to light if no system preference for dark is found
-      return 'light';
+      // Default to dark
+      return 'dark';
     }
     return 'dark';
   });
