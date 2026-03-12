@@ -38,11 +38,11 @@
     --accent: 41 74% 92%;
     --accent-foreground: 223 33% 24%;
 
-    /* Success/Error states */
-    --success: 142 70% 45%;
+    /* Success/Error states — brand palette: #38BE58 / #D13934 */
+    --success: 134 54% 48%;
     --success-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 2 63% 51%;
     --destructive-foreground: 0 0% 100%;
 
     /* Borders and inputs - Neutral/Indigo tint for premium feel */
@@ -66,8 +66,8 @@
     --amber-glow: 43 100% 60%;
     --amber-subtle: 43 30% 97%;
     --amber-border: 43 50% 85%;
-    --correct-answer: 142 70% 45%;
-    --incorrect-answer: 0 72% 51%;
+    --correct-answer: 134 54% 48%;
+    --incorrect-answer: 2 63% 51%;
     --neutral-answer: 220 13% 91%;
   }
 
@@ -98,10 +98,10 @@
     /* Dark Pearl Beige */
     --accent-foreground: 40 10% 96%;
 
-    --success: 142 70% 50%;
+    --success: 134 54% 52%;
     --success-foreground: 225 11% 15%;
 
-    --destructive: 0 62% 40%;
+    --destructive: 2 63% 42%;
     --destructive-foreground: 0 0% 95%;
 
     --border: 225 11% 25%;
@@ -120,8 +120,8 @@
     --amber-glow: 43 100% 65%;
     --amber-subtle: 43 20% 12%;
     --amber-border: 43 40% 25%;
-    --correct-answer: 142 70% 50%;
-    --incorrect-answer: 0 62% 45%;
+    --correct-answer: 134 54% 52%;
+    --incorrect-answer: 2 63% 45%;
     --neutral-answer: 220 15% 25%;
   }
 }

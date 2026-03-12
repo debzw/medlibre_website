@@ -169,7 +169,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
       try {
         if (isSearchMode) {
           await runSearchRpc(null, false);
-          return;
+          break;
         }
 
         // ── Non-search paths (SRS RPC or fallback query) ──
@@ -205,72 +205,64 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
         }
 
         if (!usedRPC) {
-          // Fallback for guests OR status filtering
-          let query = supabase
-            .from('questions')
-            .select('*')
-            .or('tem_anomalia.is.null,tem_anomalia.neq.1');
-
+          // ── Path A: status filter (correto/incorreto/todos) ─────────────────
+          // Antes: dois queries seriais — buscar IDs do histórico → IN(enorme).
+          // Agora: um único RPC com EXISTS JOIN server-side.
           if (filters.status && user) {
-            let historyQuery = supabase
-              .from('user_question_history')
-              .select('question_id')
-              .eq('user_id', user.id);
-
-            if (filters.status === 'correct') {
-              historyQuery = historyQuery.eq('is_correct', true);
-            } else if (filters.status === 'incorrect') {
-              historyQuery = historyQuery.eq('is_correct', false);
-            }
-
-            const { data: historyItems, error: historyError } = await historyQuery;
-
-            if (historyError) {
-              console.error('Error fetching history for status filter:', historyError);
-              data = [];
-            } else if (historyItems && historyItems.length > 0) {
-              const questionIds = historyItems.map(item => item.question_id);
-              query = query.in('id', questionIds);
-            } else {
-              setQuestions([]);
-              setLoading(false);
-              return;
-            }
-          }
-
-          if (filters.banca && filters.banca !== 'all') {
-            query = query.eq('banca', filters.banca);
-          }
-          if (filters.ano && filters.ano !== 0) {
-            query = query.eq('ano', filters.ano);
-          }
-          if (filters.campo_medico && filters.campo_medico !== 'all') {
-            query = query.eq('output_grande_area', filters.campo_medico);
-          }
-          if (filters.especialidade && filters.especialidade !== 'all') {
-            query = query.contains('especialidades_tags', [filters.especialidade]);
-          }
-          if (filters.tema && filters.tema !== 'all') {
-            query = query.eq('output_tema', filters.tema);
-          }
-
-          if (filters.hideAnswered) {
-            if (user) {
-              const { data: answeredIds } = await supabase
-                .from('user_question_history')
-                .select('question_id')
-                .eq('user_id', user.id);
-
-              if (answeredIds && answeredIds.length > 0) {
-                const ids = answeredIds.map(a => a.question_id);
-                query = query.not('id', 'in', `(${ids.join(',')})`);
+            const { data: rpcData, error: rpcError } = await (supabase.rpc as any)(
+              'get_questions_by_status',
+              {
+                p_user_id:       user.id,
+                p_status:        filters.status,
+                p_banca:         filters.banca        !== 'all' ? filters.banca        : null,
+                p_ano:           filters.ano           !== 0    ? filters.ano           : null,
+                p_campo:         filters.campo_medico !== 'all' ? filters.campo_medico  : null,
+                p_especialidade: filters.especialidade !== 'all' ? filters.especialidade : null,
+                p_tema:          filters.tema          !== 'all' ? filters.tema          : null,
+                p_hide_answered: filters.hideAnswered ?? false,
+                p_limit:         50,
               }
-            } else {
+            );
+
+            if (rpcError?.message.includes('statement timeout') && attempt < MAX_RETRIES) {
+              attempt++;
+              console.warn(`Timeout no status RPC. Tentativa ${attempt}...`);
+              await delay(800 * attempt);
+              continue;
+            }
+
+            data = rpcData;
+            fetchError = rpcError;
+          } else {
+            // ── Path B: guest sem status (filtros simples) ───────────────────
+            let query = supabase
+              .from('questions')
+              .select('*')
+              .or('tem_anomalia.is.null,tem_anomalia.neq.1');
+
+            if (filters.banca && filters.banca !== 'all') {
+              query = query.eq('banca', filters.banca);
+            }
+            if (filters.ano && filters.ano !== 0) {
+              query = query.eq('ano', filters.ano);
+            }
+            if (filters.campo_medico && filters.campo_medico !== 'all') {
+              query = query.eq('output_grande_area', filters.campo_medico);
+            }
+            if (filters.especialidade && filters.especialidade !== 'all') {
+              query = query.contains('especialidades_tags', [filters.especialidade]);
+            }
+            if (filters.tema && filters.tema !== 'all') {
+              query = query.eq('output_tema', filters.tema);
+            }
+
+            // Guest hideAnswered: client-side via localStorage (sem user_id)
+            if (filters.hideAnswered && !user) {
               const localHistory = localStorage.getItem('medlibre_question_history');
               if (localHistory) {
                 try {
                   const history = JSON.parse(localHistory);
-                  const ids = history.map((h: any) => h.question_id);
+                  const ids = history.map((h: any) => h.question_id as string);
                   if (ids.length > 0) {
                     query = query.not('id', 'in', `(${ids.join(',')})`);
                   }
@@ -279,21 +271,21 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
                 }
               }
             }
+
+            const { data: filteredData, error: filteredError } = await query
+              .limit(50)
+              .order('created_at', { ascending: false });
+
+            if (filteredError?.message.includes('statement timeout') && attempt < MAX_RETRIES) {
+              attempt++;
+              console.warn(`Timeout detectado no fallback. Tentativa ${attempt} de ${MAX_RETRIES}...`);
+              await delay(800 * attempt);
+              continue;
+            }
+
+            data = filteredData;
+            fetchError = filteredError;
           }
-
-          const { data: filteredData, error: filteredError } = await query
-            .limit(50)
-            .order('created_at', { ascending: false });
-
-          if (filteredError?.message.includes('statement timeout') && attempt < MAX_RETRIES) {
-            attempt++;
-            console.warn(`Timeout detectado no fallback. Tentativa ${attempt} de ${MAX_RETRIES}...`);
-            await delay(800 * attempt);
-            continue;
-          }
-
-          data = filteredData;
-          fetchError = filteredError;
         }
 
         if (fetchError) {
@@ -342,38 +334,51 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
   };
 }
 
+// ── Module-level cache: evita re-fetch entre mounts (dados estáticos por sessão) ──
+let filterOptionsCache: FilterOptions | null = null;
+let filterOptionsFetching: Promise<FilterOptions> | null = null;
+
+async function fetchFilterOptionsOnce(): Promise<FilterOptions> {
+  if (filterOptionsCache) return filterOptionsCache;
+  if (filterOptionsFetching) return filterOptionsFetching;
+
+  filterOptionsFetching = (async () => {
+    // get_filter_options usa SELECT DISTINCT com índices B-Tree — retorna ~50 valores
+    // em vez de todas as linhas da tabela (antes: .select('banca,ano,output_grande_area')
+    // retornava 50k+ linhas e deduplicava no cliente).
+    const { data, error } = await (supabase.rpc as any)('get_filter_options');
+    if (error || !data) return { bancas: [], anos: [], campos: [] };
+    const result: FilterOptions = {
+      bancas: (data.bancas as string[]) ?? [],
+      anos: (data.anos as number[]) ?? [],
+      campos: (data.campos as string[]) ?? [],
+    };
+    filterOptionsCache = result;
+    return result;
+  })();
+
+  return filterOptionsFetching;
+}
+
 export function useFilterOptions() {
   const [options, setOptions] = useState<FilterOptions>({
     bancas: [],
     anos: [],
     campos: [],
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!filterOptionsCache);
 
   useEffect(() => {
-    fetchOptions();
-  }, []);
-
-  const fetchOptions = async () => {
-    try {
-      const { data: questions } = await supabase
-        .from('questions')
-        .select('banca, ano, output_grande_area')
-        .or('tem_anomalia.is.null,tem_anomalia.neq.1');
-
-      if (questions) {
-        const bancas = [...new Set(questions.map(q => q.banca))].sort();
-        const anos = [...new Set(questions.map(q => q.ano))].sort((a, b) => b - a);
-        const campos = [...new Set(questions.map(q => q.output_grande_area).filter(Boolean))].sort() as string[];
-
-        setOptions({ bancas, anos, campos });
-      }
-    } catch (err) {
-      console.error('Error fetching filter options:', err);
-    } finally {
+    if (filterOptionsCache) {
+      setOptions(filterOptionsCache);
       setLoading(false);
+      return;
     }
-  };
+    fetchFilterOptionsOnce()
+      .then(setOptions)
+      .catch(err => console.error('Error fetching filter options:', err))
+      .finally(() => setLoading(false));
+  }, []);
 
   return { options, loading };
 }

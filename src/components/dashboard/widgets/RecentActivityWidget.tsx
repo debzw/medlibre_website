@@ -1,6 +1,7 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { CalendarDays } from 'lucide-react';
 import { DashboardWidget } from '../DashboardWidget';
+import { DASHBOARD_COLORS } from '../DashboardColors';
 
 interface RecentActivityWidgetProps {
     activity: { date: string; count: number }[];
@@ -11,7 +12,7 @@ export function RecentActivityWidget({ activity, loading }: RecentActivityWidget
     const totalQuestions = activity.reduce((acc, curr) => acc + curr.count, 0);
 
     return (
-        <DashboardWidget title="Atividade (7 dias)" icon={CalendarDays} loading={loading}>
+        <DashboardWidget title="Atividade (7 dias)" loading={loading}>
             <div className="flex h-full flex-col justify-between pt-2">
                 <div className="flex items-baseline justify-between mb-4">
                     <div className="flex flex-col">
@@ -29,8 +30,8 @@ export function RecentActivityWidget({ activity, loading }: RecentActivityWidget
                         <BarChart data={activity}>
                             <defs>
                                 <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9} />
-                                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                                    <stop offset="0%" stopColor={DASHBOARD_COLORS.info} stopOpacity={0.9} />
+                                    <stop offset="100%" stopColor={DASHBOARD_COLORS.info} stopOpacity={0.1} />
                                 </linearGradient>
                             </defs>
                             <XAxis

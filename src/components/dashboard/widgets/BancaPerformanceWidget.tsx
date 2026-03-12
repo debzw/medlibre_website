@@ -27,7 +27,7 @@ export function BancaPerformanceWidget({ byBanca, loading }: BancaPerformanceWid
         .sort((a, b) => b.total - a.total);
 
     return (
-        <DashboardWidget title="Desempenho por Banca" icon={Building2} loading={loading}>
+        <DashboardWidget title="Desempenho por Banca" loading={loading}>
             <ScrollArea className="h-[320px] -mr-4 pr-4">
                 <div className="flex flex-col gap-8 pt-4">
                     {data.length > 0 ? (

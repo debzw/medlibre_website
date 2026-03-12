@@ -58,8 +58,10 @@ export function DashboardWidget({
                     "flex items-center gap-4 transition-colors relative z-10",
                     noPadding ? "px-6 pt-5 pb-1" : "px-6 pt-6 pb-2"
                 )}>
-                    {Icon && (
+                    {/* Icon section removed as per user style preference */}
+                    {false && Icon && (
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/5 text-primary shadow-[inset_0_0_0_1px_rgba(var(--primary-rgb),0.1)] group-hover:bg-primary/10 group-hover:scale-105 transition-all duration-500">
+                            {/* @ts-ignore - Icon is a component type */}
                             <Icon className="h-5 w-5" />
                         </div>
                     )}

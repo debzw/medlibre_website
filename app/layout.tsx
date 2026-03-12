@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
@@ -77,6 +78,12 @@ export default function RootLayout({
 }) {
     return (
         <html lang="pt-BR" suppressHydrationWarning>
+            <Script
+                async
+                src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3534264996279802"
+                crossOrigin="anonymous"
+                strategy="afterInteractive"
+            />
             <body className={`${inter.className} min-h-screen flex flex-col`}>
                 <Providers>
                     <div className="flex-1 flex flex-col">

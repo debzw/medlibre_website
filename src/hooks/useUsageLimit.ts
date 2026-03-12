@@ -174,6 +174,21 @@ export function useUsageLimit(
     }
   }, [userType, isFirstGuestInterstitial]);
 
+  const resetGuestUsage = useCallback(() => {
+    if (userType === 'guest') {
+      const today = new Date().toISOString().split('T')[0];
+      const newUsage: GuestUsage = {
+        questionsAnswered: 0,
+        lastResetDate: today,
+      };
+      localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(newUsage));
+      localStorage.removeItem('medlibre_interstitial_cta_shown');
+      setQuestionsUsed(0);
+      setIsFirstGuestInterstitial(true);
+      console.log('Guest usage reset successfully.');
+    }
+  }, [userType]);
+
   return {
     questionsUsed,
     pdfsUsed,
@@ -189,5 +204,6 @@ export function useUsageLimit(
     getPdfLimit,
     isFirstGuestInterstitial,
     markInterstitialAsShown,
+    resetGuestUsage,
   };
 }

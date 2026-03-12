@@ -276,7 +276,7 @@ export default function QuestionsPage() {
                     </div>
 
                     {/* Search context banner */}
-                    {isSearchMode && searchMeta.correctedTerm && (
+                    {isSearchMode && searchMeta.layerUsed === 2 && searchMeta.correctedTerm && searchMeta.correctedTerm.toLowerCase() !== activeSearch?.toLowerCase() && (
                         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/5 border border-primary/15 text-sm text-muted-foreground animate-fade-in">
                             <Search className="h-4 w-4 text-primary shrink-0" />
                             <span>
