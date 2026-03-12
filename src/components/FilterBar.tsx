@@ -1,5 +1,4 @@
 import React from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { FilterOptions } from '@/types/database';
@@ -19,16 +18,8 @@ interface FilterBarProps {
 }
 
 export function FilterBar({
-  options,
-  selectedBanca,
-  selectedAno,
-  selectedCampo,
   hideAnswered,
-  onBancaChange,
-  onAnoChange,
-  onCampoChange,
   onHideAnsweredChange,
-  loading,
 }: FilterBarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -53,76 +44,7 @@ export function FilterBar({
           }`}
       >
         <div className="overflow-hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Banca */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Banca</label>
-              <Select
-                value={selectedBanca}
-                onValueChange={onBancaChange}
-                disabled={loading}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Todas as bancas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as bancas</SelectItem>
-                  {options.bancas.map((banca) => (
-                    <SelectItem key={banca} value={banca}>
-                      {banca}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Ano */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Ano</label>
-              <Select
-                value={selectedAno.toString()}
-                onValueChange={(v) => onAnoChange(parseInt(v))}
-                disabled={loading}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Todos os anos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Todos os anos</SelectItem>
-                  {options.anos.map((ano) => (
-                    <SelectItem key={ano} value={ano.toString()}>
-                      {ano}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Campo Médico */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Especialidade</label>
-              <Select
-                value={selectedCampo}
-                onValueChange={onCampoChange}
-                disabled={loading}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Todas as especialidades" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as especialidades</SelectItem>
-                  {options.campos.map((campo) => (
-                    <SelectItem key={campo} value={campo}>
-                      {campo}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Hide answered toggle */}
-          <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-3 pt-2">
             <EyeOff className="w-4 h-4 text-muted-foreground" />
             <Switch
               id="hide-answered"

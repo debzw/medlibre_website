@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { SpecialtyDiagnosis } from '@/types/performance';
 
-export function useSpecialtyPerformance(specialty: string) {
+export function useSpecialtyPerformance(specialty: string, enabled = true) {
     const { user } = useAuthContext();
 
     return useQuery({
@@ -19,15 +19,14 @@ export function useSpecialtyPerformance(specialty: string) {
                 p_specialty: decodedSpecialty,
             });
 
-
             if (error) {
-                console.error('Error fetching specialty performance:', error);
+                console.error('Error fetching specialty performance:', JSON.stringify(error), error);
                 throw error;
             }
 
             return data as unknown as SpecialtyDiagnosis;
         },
-        enabled: !!user && !!specialty,
+        enabled: !!user && !!specialty && enabled,
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 }

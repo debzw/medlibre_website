@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { MethodologySection } from '@/components/landing/MethodologySection';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
 import { FAQSection } from '@/components/landing/FAQSection';
-import { CTASection } from '@/components/landing/CTASection';
 
 
 export const metadata: Metadata = {
@@ -70,7 +69,14 @@ export default function AboutPage() {
 
             <FAQSection />
 
-            <CTASection />
+            {/* DeCS/MeSH Attribution */}
+            <section className="py-8 border-t border-border/50">
+                <div className="container mx-auto px-4">
+                    <p className="text-xs text-center text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                        Este site utiliza descritores da edição 2025 do DeCS/MeSH, sob licença da OPAS/BIREME. O uso desta terminologia não implica endosso da OPAS/BIREME ao conteúdo deste produto.
+                    </p>
+                </div>
+            </section>
         </main>
     );
 }

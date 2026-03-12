@@ -230,6 +230,21 @@ export const useSmartFilters = () => {
         setSearchQuery('');
     };
 
+    // Live DeCS term suggestions — only returns terms that have questions
+    // (direct or ancestral) to avoid suggesting terms with zero results.
+    const { data: decsTermSuggestions = [] } = useQuery({
+        queryKey: ['decs-suggestions', debouncedSearchQuery],
+        queryFn: async () => {
+            const { data } = await supabase.rpc('get_decs_suggestions', {
+                p_query: debouncedSearchQuery,
+                p_limit: 5,
+            });
+            return (data as string[]) || [];
+        },
+        enabled: debouncedSearchQuery.length >= 3,
+        staleTime: 1000 * 60 * 5,
+    });
+
     const searchableTerms = useMemo(() => {
         const terms = new Set<string>();
         combinations.forEach((combo) => {
@@ -249,6 +264,7 @@ export const useSmartFilters = () => {
     return {
         isLoading,
         aliveOptions,
+        decsTermSuggestions,
         searchableTerms,
         selectedBanca,
         setSelectedBanca,

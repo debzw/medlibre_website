@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, BookOpen } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { DashboardWidget } from '../DashboardWidget';
 import { getPerformanceColor } from '../DashboardColors';
 import { useSpecialtyPerformance } from '@/hooks/useSpecialtyPerformance';
@@ -51,7 +51,7 @@ interface SpecialtyEntryProps {
 
 function SpecialtyItem({ name, correct, total, accuracy }: SpecialtyEntryProps) {
     const [isExpanded, setIsExpanded] = useState(false);
-    const { data: details, isLoading } = useSpecialtyPerformance(name);
+    const { data: details, isLoading } = useSpecialtyPerformance(name, isExpanded);
 
     return (
         <div className="w-full flex flex-col gap-2">
@@ -159,7 +159,7 @@ export function SpecialtyPerformanceWidget({ byField, loading }: SpecialtyPerfor
         <DashboardWidget
             colSpan={2}
             title="Desempenho por Especialidade"
-            icon={BookOpen}
+
             loading={loading}
         >
             <div className="overflow-y-auto overflow-x-hidden max-h-[300px] pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-border/30 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-border/60">

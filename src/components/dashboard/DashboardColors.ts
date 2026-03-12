@@ -1,11 +1,13 @@
 export const DASHBOARD_COLORS = {
-    critical: '#E53935', // Red
-    good: '#8BC34A',     // Light Green
-    gold: '#EDB92E',     // Gold
+    critical: '#D13934', // Red
+    warning: '#F58B2B',  // Orange
+    gold: '#EDB92E',     // Yellow/Gold
+    good: '#38BE58',     // Green
+    info: '#2DC0E0',     // Cyan/Blue
     neutral: '#6B7280',  // Gray
 } as const;
 
-export type PerformanceStatus = 'critical' | 'good' | 'gold' | 'neutral';
+export type PerformanceStatus = 'critical' | 'warning' | 'good' | 'gold' | 'info' | 'neutral';
 
 export const getPerformanceColor = (percentage: number): string => {
     if (percentage >= 90) return DASHBOARD_COLORS.good;

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, X, Check, FilterX, FileDown, History } from 'lucide-react';
+import { Search, X, FilterX, FileDown, History } from 'lucide-react';
 import { Command as CommandPrimitive } from "cmdk";
 import {
     Command,
@@ -11,7 +11,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { getHighlightedParts, normalize, levenshteinDistance } from '@/lib/searchUtils';
-import { Badge } from '../ui/badge';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
 
 interface ThinkingSearchBarProps {
@@ -26,6 +25,7 @@ interface ThinkingSearchBarProps {
         temas: [string, number, number][];
     };
     onIntentDetected: (type: 'banca' | 'area' | 'especialidade' | 'tema', value: string) => void;
+    decsTermSuggestions?: string[];
     className?: string;
     isPremium?: boolean;
     totalFilteredQuestions?: number;
@@ -39,6 +39,7 @@ export const ThinkingSearchBar = ({
     onReset,
     aliveOptions,
     onIntentDetected,
+    decsTermSuggestions = [],
     className,
     isPremium,
     totalFilteredQuestions = 0,
@@ -59,12 +60,6 @@ export const ThinkingSearchBar = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Filter suggestions based on current input
-    const topBancas = aliveOptions.bancas.filter(i => i[2] > 0 || !searchQuery).slice(0, 3);
-    const topAreas = aliveOptions.areas.filter(i => i[2] > 0 || !searchQuery).slice(0, 3);
-    const topEspecialidades = aliveOptions.especialidades.filter(i => i[2] > 0 || !searchQuery).slice(0, 5);
-    const topTemas = aliveOptions.temas.filter(i => i[2] > 0 || !searchQuery).slice(0, 5);
-
     // Calculate Best Match across all categories
     const allOptions = [
         ...aliveOptions.bancas.map(i => ({ type: 'banca' as const, value: i[0], count: i[1], score: i[2] })),
@@ -81,6 +76,23 @@ export const ThinkingSearchBar = ({
             return b.count - a.count;
         })
         .slice(0, 3); // Top 3 absolute best matches
+
+    // Unified suggestions: bestMatches + DeCS terms not already covered
+    const decsNotInBest = decsTermSuggestions.filter(
+        term => !bestMatches.some(m => normalize(m.value) === normalize(term))
+    );
+    const unifiedSuggestions = [
+        ...bestMatches.map(m => ({
+            key: `match-${m.type}-${m.value}`,
+            text: m.value,
+            onSelect: () => { addToHistory(m.value); onIntentDetected(m.type, m.value); setSearchQuery(''); }
+        })),
+        ...decsNotInBest.map(term => ({
+            key: `decs-${term}`,
+            text: term,
+            onSelect: () => { setSearchQuery(term); setIsOpen(false); }
+        })),
+    ].slice(0, 5);
 
     // Suggestions for typos
     const getSuggestions = (query: string, options: typeof allOptions): string[] => {
@@ -99,26 +111,6 @@ export const ThinkingSearchBar = ({
     };
 
     const suggestedTerms = getSuggestions(searchQuery, allOptions);
-
-    const getTypeIcon = (type: string) => {
-        switch (type) {
-            case 'banca': return '🏛️';
-            case 'area': return '🎯';
-            case 'especialidade': return '🏥';
-            case 'tema': return '📚';
-            default: return '🔍';
-        }
-    };
-
-    const getTypeLabel = (type: string) => {
-        switch (type) {
-            case 'banca': return 'Instituição';
-            case 'area': return 'Grande Área';
-            case 'especialidade': return 'Especialidade';
-            case 'tema': return 'Tema';
-            default: return type;
-        }
-    };
 
     const Highlight = ({ text, query }: { text: string; query: string }) => {
         const parts = getHighlightedParts(text, query);
@@ -270,101 +262,16 @@ export const ThinkingSearchBar = ({
                                 </CommandEmpty>
                             )}
 
-                            {bestMatches.length > 0 && searchQuery.length > 0 && (
-                                <CommandGroup heading="Sugestão Principal" className="text-primary">
-                                    {bestMatches.map((match) => (
+                            {unifiedSuggestions.length > 0 && searchQuery.length > 0 && (
+                                <CommandGroup>
+                                    {unifiedSuggestions.map(item => (
                                         <CommandItem
-                                            key={`${match.type}-${match.value}`}
-                                            value={match.value}
-                                            onSelect={() => {
-                                                addToHistory(match.value);
-                                                onIntentDetected(match.type, match.value);
-                                                setSearchQuery('');
-                                            }}
-                                            className="flex justify-between items-center aria-selected:bg-primary/10 py-3 px-4 rounded-lg group"
+                                            key={item.key}
+                                            value={item.key}
+                                            onSelect={item.onSelect}
+                                            className="py-2.5 px-4 rounded-lg aria-selected:bg-primary/10"
                                         >
-                                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                <div className="flex flex-col gap-0.5 min-w-0">
-                                                    <div className="truncate">
-                                                        <Highlight text={match.value} query={searchQuery} />
-                                                    </div>
-                                                    <span className="text-[10px] text-muted-foreground/70 font-medium">
-                                                        {getTypeLabel(match.type)}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            )}
-
-                            {topBancas.length > 0 && (
-                                <CommandGroup heading="Instituições">
-                                    {topBancas.map(([banca, count]) => (
-                                        <CommandItem
-                                            key={banca}
-                                            value={banca}
-                                            onSelect={() => {
-                                                onIntentDetected('banca', banca);
-                                                setSearchQuery('');
-                                            }}
-                                            className="flex justify-between"
-                                        >
-                                            <Highlight text={banca} query={searchQuery} />
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            )}
-
-                            {topAreas.length > 0 && (
-                                <CommandGroup heading="Grandes Áreas">
-                                    {topAreas.map(([area, count]) => (
-                                        <CommandItem
-                                            key={area}
-                                            value={area}
-                                            onSelect={() => {
-                                                onIntentDetected('area', area);
-                                                setSearchQuery('');
-                                            }}
-                                            className="flex justify-between"
-                                        >
-                                            <Highlight text={area} query={searchQuery} />
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            )}
-
-                            {topEspecialidades.length > 0 && (
-                                <CommandGroup heading="Especialidades">
-                                    {topEspecialidades.map(([esp, count]) => (
-                                        <CommandItem
-                                            key={esp}
-                                            value={esp}
-                                            onSelect={() => {
-                                                onIntentDetected('especialidade', esp);
-                                                setSearchQuery('');
-                                            }}
-                                            className="flex justify-between"
-                                        >
-                                            <Highlight text={esp} query={searchQuery} />
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            )}
-
-                            {topTemas.length > 0 && (
-                                <CommandGroup heading="Temas">
-                                    {topTemas.map(([tema, count]) => (
-                                        <CommandItem
-                                            key={tema}
-                                            value={tema}
-                                            onSelect={() => {
-                                                onIntentDetected('tema', tema);
-                                                setSearchQuery('');
-                                            }}
-                                            className="flex justify-between"
-                                        >
-                                            <Highlight text={tema} query={searchQuery} />
+                                            <Highlight text={item.text} query={searchQuery} />
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
