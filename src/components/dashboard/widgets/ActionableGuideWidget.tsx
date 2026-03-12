@@ -2,10 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowRight, BrainCircuit, Lightbulb, TrendingUp, Sparkles, Target } from 'lucide-react';
+import { ArrowRight, BrainCircuit, Lightbulb, TrendingUp, Sparkles, Target, CalendarDays } from 'lucide-react';
 import { DashboardWidget } from '../DashboardWidget';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+import { DASHBOARD_COLORS } from '../DashboardColors';
 
 interface ActionableGuideWidgetProps {
     byField: Record<string, { correct: number; total: number }>;
@@ -34,6 +36,7 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
     if (!weakSpot) {
         return (
             <DashboardWidget
+                title="Raio-X de Temas"
                 colSpan={2}
                 className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 min-h-[400px]"
                 loading={loading}
@@ -69,7 +72,6 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
     return (
         <DashboardWidget
             title="Direcionamento Estratégico"
-            icon={Target}
             colSpan={2}
             className="group relative border-border/5 bg-card/20 p-0 overflow-hidden"
             loading={loading}
@@ -77,15 +79,15 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
         >
             {/* Unified Soft Background Gradients */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute -left-1/4 -top-1/4 h-full w-full bg-destructive/[0.04] blur-[150px] rounded-full transition-opacity duration-1000 opacity-60 group-hover:opacity-100" />
-                <div className="absolute -right-1/4 -bottom-1/4 h-full w-full bg-success/[0.03] blur-[150px] rounded-full transition-opacity duration-1000 opacity-40 group-hover:opacity-80" />
+                <div className="absolute -left-1/4 -top-1/4 h-full w-full opacity-60 group-hover:opacity-100 blur-[150px] rounded-full transition-opacity duration-1000" style={{ backgroundColor: DASHBOARD_COLORS.critical + '0A' }} />
+                <div className="absolute -right-1/4 -bottom-1/4 h-full w-full opacity-40 group-hover:opacity-80 blur-[150px] rounded-full transition-opacity duration-1000" style={{ backgroundColor: DASHBOARD_COLORS.good + '08' }} />
             </div>
 
             <div className="flex flex-col md:flex-row h-full min-h-[400px] relative z-10">
 
                 {/* LEFT SIDE: PRIMARY ACTION (Weak Spot) */}
                 <div className="flex-1 p-8 flex flex-col justify-center relative">
-                    <div className="flex items-center gap-2.5 text-destructive bg-destructive/10 w-fit px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] ring-1 ring-destructive/20 mb-6 backdrop-blur-md">
+                    <div className="flex items-center gap-2.5 w-fit px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.25em] mb-6 backdrop-blur-md" style={{ color: DASHBOARD_COLORS.critical, backgroundColor: DASHBOARD_COLORS.critical + '1A', boxShadow: `inset 0 0 0 1px ${DASHBOARD_COLORS.critical}33` }}>
                         <Target className="h-3.5 w-3.5" />
                         Prioridade Máxima
                     </div>
@@ -97,7 +99,7 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
                         <div className="flex items-center gap-4 mt-6">
                             <div className="h-px w-10 bg-border/50" />
                             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Acurácia Atual</span>
-                            <span className="text-4xl font-black text-destructive tracking-tighter">{Math.round(weakSpot.accuracy)}%</span>
+                            <span className="text-4xl font-black tracking-tighter" style={{ color: DASHBOARD_COLORS.critical }}>{Math.round(weakSpot.accuracy)}%</span>
                         </div>
                     </div>
 
@@ -109,7 +111,8 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
                         <Button
                             onClick={() => router.push(`/app?campo=${encodeURIComponent(weakSpot.name)}`)}
                             size="lg"
-                            className="rounded-2xl bg-destructive hover:bg-destructive/90 text-white shadow-[0_20px_40px_-10px_rgba(220,38,38,0.3)] transition-all hover:scale-[1.02] active:scale-95 px-10 h-14 font-black uppercase tracking-widest text-xs"
+                            className="rounded-2xl text-white transition-all hover:scale-[1.02] active:scale-95 px-10 h-14 font-black uppercase tracking-widest text-xs"
+                            style={{ backgroundColor: DASHBOARD_COLORS.critical, boxShadow: `0 20px 40px -10px ${DASHBOARD_COLORS.critical}4D` }}
                         >
                             Treinar Agora
                             <ArrowRight className="ml-2 h-4 w-4" />
@@ -129,7 +132,7 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
 
                     {strongSpot && strongSpot.name !== weakSpot.name && (
                         <div className="space-y-6">
-                            <div className="flex items-center gap-2.5 text-success text-[10px] font-black uppercase tracking-[0.25em]">
+                            <div className="flex items-center gap-2.5 text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: DASHBOARD_COLORS.good }}>
                                 <Sparkles className="h-3.5 w-3.5" />
                                 Zona de Domínio
                             </div>
@@ -137,7 +140,7 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
                                 <h5 className="font-bold text-foreground/90 text-xl tracking-tight leading-tight truncate" title={strongSpot.name}>
                                     {strongSpot.name}
                                 </h5>
-                                <div className="text-4xl font-black text-success tabular-nums tracking-tighter">
+                                <div className="text-4xl font-black tabular-nums tracking-tighter" style={{ color: DASHBOARD_COLORS.good }}>
                                     {Math.round(strongSpot.accuracy)}%
                                 </div>
                             </div>
@@ -146,7 +149,8 @@ export function ActionableGuideWidget({ byField, loading }: ActionableGuideWidge
                                     initial={{ width: 0 }}
                                     animate={{ width: `${strongSpot.accuracy}%` }}
                                     transition={{ duration: 1.5, ease: "easeOut" }}
-                                    className="h-full bg-gradient-to-r from-success/80 to-success rounded-full shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+                                    className="h-full rounded-full"
+                                    style={{ background: `linear-gradient(to right, ${DASHBOARD_COLORS.good}CC, ${DASHBOARD_COLORS.good})`, boxShadow: `0 0 15px ${DASHBOARD_COLORS.good}4D` }}
                                 />
                             </div>
                         </div>

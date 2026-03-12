@@ -7,7 +7,7 @@ export function MasteryWidget({ loading }: { loading?: boolean }) {
     const masteryScore = 0;
 
     return (
-        <DashboardWidget title="Nível de Maestria" icon={MedLibreLogo} loading={loading}>
+        <DashboardWidget title="Nível de Maestria" loading={loading}>
             <div className="flex flex-col items-center space-y-4">
                 <div className="relative flex items-center justify-center">
                     <svg className="h-24 w-24 -rotate-90 transform">

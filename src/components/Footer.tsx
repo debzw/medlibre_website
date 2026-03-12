@@ -6,6 +6,9 @@ export const Footer = () => {
                     <div className="space-y-4">
                         <img src="/logo_withname.svg" alt="Medlibre" className="h-8 mx-auto md:mx-0 dark:hidden" />
                         <img src="/logo_withname_white.svg" alt="Medlibre" className="h-8 mx-auto md:mx-0 hidden dark:block" />
+                        <p className="text-xs text-muted-foreground">
+                            CNPJ: 65.628.534/0001-02
+                        </p>
                         <p className="text-xs text-muted-foreground leading-relaxed">
                             A plataforma inteligente para quem quer passar na residência médica sem perder tempo com vídeo-aulas.
                         </p>
