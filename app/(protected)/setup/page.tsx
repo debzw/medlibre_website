@@ -27,6 +27,7 @@ export default function FocusedSetupPage() {
     const {
         isLoading,
         aliveOptions,
+        decsTermSuggestions,
         selectedBanca,
         setSelectedBanca,
         selectedAno,
@@ -216,6 +217,7 @@ export default function FocusedSetupPage() {
                     hasFilters={hasFilters}
                     onReset={reset}
                     aliveOptions={aliveOptions}
+                    decsTermSuggestions={decsTermSuggestions}
                     onIntentDetected={(type, value) => {
                         if (type === 'banca') setSelectedBanca(value);
                         if (type === 'area') setSelectedArea(value);
@@ -275,7 +277,7 @@ export default function FocusedSetupPage() {
 
             {/* Background Micro-decoration */}
             <div className="fixed top-1/4 -right-20 w-96 h-96 bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse" />
-            <div className="fixed bottom-1/4 -left-20 w-80 h-80 bg-blue-500/5 rounded-full blur-[100px] -z-10" />
+            <div className="fixed bottom-1/4 -left-20 w-80 h-80 rounded-full blur-[100px] -z-10" style={{ backgroundColor: '#2DC0E00D' }} />
             <ExportPDFModal
                 open={isExportModalOpen}
                 onOpenChange={setIsExportModalOpen}

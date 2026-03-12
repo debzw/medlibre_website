@@ -1,0 +1,73 @@
+# DeCS e Classificação de Questões no Medlibre
+
+Este documento explica como o sistema de **Descritores em Ciências da Saúde (DeCS)** é utilizado no Medlibre para padronizar e classificar as questões médicas na base de dados Supabase.
+
+## 1. O que é o DeCS?
+
+O DeCS (Descritores em Ciências da Saúde) é um vocabulário estruturado e trilíngue (Português, Espanhol e Inglês) criado pela BIREME/OPAS/OMS. Ele serve como uma linguagem comum para a indexação de artigos científicos e materiais de saúde.
+
+No Medlibre, utilizamos o DeCS para garantir que diferentes termos que se referem ao mesmo conceito (ex: "Hipertensão" e "Pressão Alta") sejam tratados de forma unificada.
+
+## 2. Implementação no Supabase
+
+A classificação é gerida principalmente por duas tabelas e uma lógica de normalização:
+
+### Tabela `decs_terms`
+Armazena o vocabulário oficial. Campos principais:
+- `id`: UUID único.
+- `term`: O nome do termo (ex: "Diabetes Mellitus").
+- `clean_term`: Versão normalizada (lowercase, sem espaços extras) usada para comparação e buscas rápidas.
+- `decs_code`: Código canônico (ex: `D003920`). Todos os sinônimos e variações de idioma de um mesmo conceito compartilham o mesmo `decs_code`.
+- `tree_numbers`: Array de caminhos hierárquicos (ex: `A01.123`). Define a posição do termo na árvore do conhecimento médico.
+
+### Tabela `question_decs` (Tabela de Junção)
+Estabelece a relação de "muitos para muitos" entre questões e termos DeCS.
+- Permite que uma única questão seja marcada com múltiplos temas e subtemas.
+- É a base para o sistema de "Diagnóstico de Performance por Especialidade", permitindo granularidade na análise de erros do usuário.
+
+## 3. Hierarquia e Árvores de Conhecimento
+
+O DeCS organiza os termos em uma árvore lógica através do campo `tree_numbers`. 
+
+- **Estrutura**: Um código como `C04.557` indica que o termo é um descendente de `C04` (Neoplasias).
+- **Relacionamentos**: Termos podem pertencer a múltiplas árvores simultaneamente, permitindo que o Medlibre localize uma questão tanto por sua categoria clínica quanto por sua base biológica.
+- **Diversidade (Sistema LECTOR)**: O mecanismo de recomendação utiliza o primeiro nível da hierarquia (`Min(branch)`) para garantir que uma sessão de estudos tenha variedade de "galhos" do conhecimento, evitando redundância excessiva.
+
+## 4. Mecanismo de Busca (Funnel Search)
+
+A busca do Medlibre não é apenas uma pesquisa de texto comum; ela utiliza um **Funil de Processamento** em 3 camadas:
+
+### Camada 1: Correspondência Exata DeCS
+O sistema tenta casar a busca do usuário diretamente com um `clean_term` do DeCS. Se houver match, a busca é "expandida" para garantir que questões com aquele tema ou especialidade oficial subam no ranking, mesmo que o enunciado não use a palavra exata.
+
+### Camada 2: Inteligência em Erros e Siglas
+Se não houver match exato e a busca for curta (até 3 palavras), utilizamos **similaridade de trigramas**. Isso corrige erros de digitação (ex: "Hipertensao") e reconhece abreviações comuns mapeadas no DeCS, redirecionando o usuário para o termo canônico.
+
+## 5. Classificação das Questões
+
+As questões na tabela `public.questions` possuem campos de metadados fundamentais:
+
+| Campo | Descrição | Exemplo |
+| :--- | :--- | :--- |
+| `banca` | Instituição organizadora da prova. | `USP`, `AMP`, `ENARE` |
+| `ano` | Ano de aplicação da prova. | `2024`, `2023` |
+| `output_grande_area`| As 5 grandes áreas da medicina. | `Pediatria`, `Cirurgia Geral` |
+| `output_especialidade`| Especialidade específica da questão. | `Nefrologia`, `Cardiologia` |
+| `output_tema` | O tema principal abordado. | `Infarto Agudo do Miocárdio` |
+
+### Fluxo de Validação
+Para evitar dados "sujos" e inconsistências na interface, utilizamos RPCs (Remote Procedure Calls) como `get_question_metadata_summary()`.
+1. O sistema busca os metadados brutos das questões.
+2. Cada `especialidade` e `tema` é validado contra a tabela `decs_terms`.
+3. Se um termo não for encontrado no DeCS, ele é tratado como uma string vazia no agrupamento, garantindo que apenas termos padronizados apareçam nos filtros de busca inteligente.
+
+## 6. Benefícios do Sistema
+
+- **Filtros Inteligentes**: O usuário consegue filtrar por temas precisos, independente de como a banca nomeou o assunto.
+- **Análise de Erros (Direcionamento ao Erro)**: Ao agrupar questões pelo `decs_code`, o Medlibre identifica exatamente em qual conceito o aluno está falhando, mesmo que as questões venham de bancas diferentes com nomes de temas ligeiramente distintos.
+- **Escalabilidade**: Permite a ingestão massiva de questões mantendo a organização estrutural automática.
+
+
+### Semântica e Decaimento Temporal
+Para casos clínicos longos, o sistema utiliza busca textual (FTS) com ranking de relevância. Aplicamos um **decaimento temporal** (2% ao ano), priorizando questões recentes e atualizadas, mas permitindo que questões clássicas de alto valor permaneçam acessíveis.
+

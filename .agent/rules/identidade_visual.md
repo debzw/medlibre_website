@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Identidade Visual - MedLibre
 
 MedLibre é uma plataforma freemium de preparação para residência médica que prioriza a fluidez, clareza e foco do estudante.
@@ -33,6 +37,16 @@ A paleta é baseada na nova identidade visual: Gold, Indigo, and Grey.
 | **Foreground** | `#F6F5F4` | `40 10% 96%` | White Smoke |
 | **Primary** | `#EDB92E` | `43 85% 55%` | Sunflower Gold |
 | **Secondary** | `#293452` | `223 33% 24%` | Twilight Indigo |
+
+### Cores acessórias
+Color Mapping:
+| Token | Hex | HSL | Uso Semântico |
+|---|---|---|---|
+| **critical** | `#D13934` | `2 63% 51%` | Erros, desempenho ruim (<60%), respostas incorretas |
+| **warning** | `#F58B2B` | `28 90% 56%` | Alertas, atenção moderada |
+| **gold** | `#EDB92E` | `43 85% 55%` | Progresso médio (60–89%), streak, tempo médio, primário da marca |
+| **good** | `#38BE58` | `134 54% 48%` | Sucesso, desempenho excelente (≥90%), respostas corretas |
+| **info** | `#2DC0E0` | `191 74% 53%` | Informações neutras, revisão espaçada (SRS) |
 
 ## 4. Tipografia
 O projeto utiliza fontes modernas e impactantes.

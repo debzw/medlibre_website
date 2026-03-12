@@ -137,8 +137,8 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
               className={cn(
                 "px-2 flex items-center justify-center shrink-0",
                 historyEntry.is_correct
-                  ? "bg-green-500/10 text-green-600 border-green-200"
-                  : "bg-red-500/10 text-red-600 border-red-200"
+                  ? "bg-success/10 text-success border-success/20"
+                  : "bg-destructive/10 text-destructive border-destructive/20"
               )}
               title={historyEntry.is_correct ? "Questão respondida corretamente" : "Questão respondida incorretamente"}
             >

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, Zap, Sparkles, Layout, Shield } from 'lucide-react';
+import { AdBanner } from './AdBanner';
 
 interface AdModalProps {
   isOpen: boolean;
@@ -39,6 +41,7 @@ export function AdModal({ isOpen, onClose, isLoginCTA }: AdModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={canClose ? onClose : undefined}>
       <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
+        <DialogTitle className="sr-only">Aviso ou Anúncio</DialogTitle>
         <div className="flex flex-col">
           {isLoginCTA ? (
             <div className="bg-background">
@@ -100,24 +103,18 @@ export function AdModal({ isOpen, onClose, isLoginCTA }: AdModalProps) {
               </div>
             </div>
           ) : (
-            <div className="p-8 flex flex-col items-center">
-              <div className="w-full flex justify-between items-center mb-6">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 flex items-center">
-                  <Sparkles className="w-3 h-3 mr-1.5" />
-                  Publicidade
-                </span>
+            <div className="p-6 flex flex-col items-center">
+              <div className="w-full h-6 flex items-center justify-end">
                 {!canClose && (
-                  <span className="text-[10px] font-medium text-muted-foreground px-2 py-1 bg-muted rounded-full">
-                    Aguarde {countdown}s
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground/50 px-2 py-1 bg-muted/50 rounded-md">
+                    Publicidade • {countdown}s
                   </span>
                 )}
               </div>
 
-              {/* Ad content placeholder */}
-              <div className="w-full h-64 ad-placeholder rounded-2xl bg-muted/30 border border-dashed border-border flex items-center justify-center">
-                <div className="text-center opacity-40">
-                  <p className="text-xs font-semibold uppercase tracking-tighter">Espaço Reservado</p>
-                  <p className="text-[10px]">300x250 Ad Display</p>
+              <div className="w-full flex justify-center py-4">
+                <div className="w-full max-w-[336px]">
+                  <AdBanner variant="square" className="w-full" />
                 </div>
               </div>
 
@@ -125,7 +122,7 @@ export function AdModal({ isOpen, onClose, isLoginCTA }: AdModalProps) {
                 onClick={onClose}
                 disabled={!canClose}
                 variant={canClose ? 'default' : 'secondary'}
-                className={`w-full mt-6 h-12 font-bold transition-all ${canClose ? 'btn-amber shadow-lg shadow-amber-500/20' : 'opacity-50'}`}
+                className={`w-full mt-4 transition-all ${canClose ? 'h-12 font-bold btn-amber shadow-lg shadow-amber-500/20 text-base' : 'h-9 text-xs font-normal opacity-50 bg-black/5 hover:bg-black/5 dark:bg-white/5 disabled:opacity-50'}`}
               >
                 {canClose ? (
                   <>
