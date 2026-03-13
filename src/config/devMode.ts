@@ -40,7 +40,7 @@ export const LIMIT_CONFIG = {
   // Guest users (not logged in)
   guest: {
     enabled: true,
-    limit: 1000,
+    limit: 5,
     pdf_enabled: true,
     pdf_limit: 0, // Guest can't export
   },
