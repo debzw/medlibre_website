@@ -114,7 +114,7 @@ export function AdModal({ isOpen, onClose, isLoginCTA }: AdModalProps) {
 
               <div className="w-full flex justify-center py-4">
                 <div className="w-full max-w-[336px]">
-                  <AdBanner variant="square" className="w-full" />
+                  <AdBanner variant="square" className="w-full" slotId="9639357571" />
                 </div>
               </div>
 

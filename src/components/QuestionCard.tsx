@@ -198,7 +198,7 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
       {/* Ad Banner for mobile - Only shown for free/guest users */}
       {userType !== 'paid' && (
         <div className="md:hidden py-1">
-          <AdBanner variant="horizontal" className="h-[100px] border-dashed border-2 border-border/30 rounded-xl" />
+          <AdBanner variant="horizontal" className="h-[100px] border-dashed border-2 border-border/30 rounded-xl" slotId="7061295697" />
         </div>
       )}
 

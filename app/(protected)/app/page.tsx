@@ -441,7 +441,7 @@ export default function QuestionsPage() {
                 {showLateralAds && (
                     <aside className="hidden lg:block w-[200px] shrink-0">
                         <div className="sticky top-24">
-                            <AdBanner variant="sidebar" />
+                            <AdBanner variant="sidebar" slotId="8374377363" />
                         </div>
                     </aside>
                 )}
