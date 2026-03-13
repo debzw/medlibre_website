@@ -12,18 +12,32 @@ const TOKEN_TTL_MINUTES = 15;
 
 export async function POST(request: NextRequest) {
   try {
+    // Diagnóstico de env vars (sem expor valores)
+    console.log('[send-verification] env check:', {
+      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasResendKey: !!process.env.RESEND_API_KEY,
+      siteUrl: SITE_URL,
+    });
+
     const { userId, email } = await request.json();
 
     if (!userId || !email) {
       return NextResponse.json({ error: 'userId e email são obrigatórios.' }, { status: 400 });
     }
 
+    console.log('[send-verification] iniciando para userId:', userId);
+
     // Se já existe um token e ele expirou, o prazo acabou: deleta o usuário
-    const { data: existingToken } = await supabaseAdmin
+    const { data: existingToken, error: tokenCheckError } = await supabaseAdmin
       .from('verification_tokens')
       .select('expires_at')
       .eq('user_id', userId)
       .single();
+
+    if (tokenCheckError && tokenCheckError.code !== 'PGRST116') {
+      console.error('[send-verification] erro ao checar token existente:', tokenCheckError);
+    }
 
     if (existingToken && new Date(existingToken.expires_at) < new Date()) {
       await supabaseAdmin.from('user_profiles').delete().eq('id', userId);
@@ -35,6 +49,8 @@ export async function POST(request: NextRequest) {
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + TOKEN_TTL_MINUTES * 60 * 1000).toISOString();
 
+    console.log('[send-verification] fazendo upsert do token...');
+
     // Upsert: substitui token anterior se já existir para este usuário
     const { error: dbError } = await supabaseAdmin
       .from('verification_tokens')
@@ -44,9 +60,11 @@ export async function POST(request: NextRequest) {
       );
 
     if (dbError) {
-      console.error('Erro ao salvar token:', dbError);
-      return NextResponse.json({ error: 'Erro interno.' }, { status: 500 });
+      console.error('[send-verification] erro ao salvar token:', dbError);
+      return NextResponse.json({ error: 'Erro interno.', detail: dbError.message }, { status: 500 });
     }
+
+    console.log('[send-verification] token salvo. Chamando Resend...');
 
     const confirmUrl = `${SITE_URL}/auth/confirm?token=${token}`;
 
@@ -144,13 +162,14 @@ export async function POST(request: NextRequest) {
 
     if (!emailRes.ok) {
       const body = await emailRes.text();
-      console.error('Erro Resend:', body);
-      return NextResponse.json({ error: 'Falha ao enviar e-mail.' }, { status: 500 });
+      console.error('[send-verification] erro Resend:', emailRes.status, body);
+      return NextResponse.json({ error: 'Falha ao enviar e-mail.', detail: body }, { status: 500 });
     }
 
+    console.log('[send-verification] e-mail enviado com sucesso para:', email);
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('send-verification error:', err);
-    return NextResponse.json({ error: 'Erro interno.' }, { status: 500 });
+    console.error('[send-verification] erro inesperado:', err);
+    return NextResponse.json({ error: 'Erro interno.', detail: String(err) }, { status: 500 });
   }
 }
