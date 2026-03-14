@@ -1,11 +1,29 @@
+const InstagramIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+        <circle cx="12" cy="12" r="4" />
+        <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none" />
+    </svg>
+);
+
 export const Footer = () => {
     return (
         <footer className="py-8 mt-auto border-t bg-background/50 backdrop-blur-sm">
             <div className="container mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left mb-8">
                     <div className="space-y-4">
-                        <img src="/logo_withname.svg" alt="Medlibre" className="h-8 mx-auto md:mx-0 dark:hidden" />
-                        <img src="/logo_withname_white.svg" alt="Medlibre" className="h-8 mx-auto md:mx-0 hidden dark:block" />
+                        <div className="flex items-center justify-center md:justify-start">
+                            <img src="/logo_withname.svg" alt="Medlibre" className="h-8 dark:hidden" />
+                            <img src="/logo_withname_white.svg" alt="Medlibre" className="h-8 hidden dark:block" />
+                            <a
+                                href="https://www.instagram.com/medlibre.br/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary transition-colors ml-[200px]"
+                            >
+                                <InstagramIcon className="h-5 w-5" />
+                            </a>
+                        </div>
                         <p className="text-xs text-muted-foreground">
                             CNPJ: 65.628.534/0001-02
                         </p>

@@ -31,8 +31,9 @@ export function CookieBanner() {
             <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="text-sm text-muted-foreground flex-1">
                     <p>
-                        Nós utilizamos cookies para melhorar sua experiência e analisar o tráfego.
-                        Ao continuar navegando, você concorda com nossa{' '}
+                        Nós utilizamos cookies para melhorar sua experiência, analisar o tráfego e exibir anúncios personalizados via Google AdSense.
+                        Ao aceitar, você concorda com o uso de cookies de publicidade.
+                        Saiba mais em nossa{' '}
                         <a href="/privacy" className="text-primary hover:underline underline-offset-4">
                             Política de Privacidade
                         </a>.

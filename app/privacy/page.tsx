@@ -1,4 +1,12 @@
 import React from 'react';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Política de Privacidade | Medlibre',
+    description: 'Política de privacidade do Medlibre. Como coletamos, usamos e protegemos seus dados pessoais em conformidade com a LGPD.',
+    robots: { index: false, follow: false },
+    alternates: { canonical: 'https://medlibre.com.br/privacy' },
+};
 
 export default function PrivacyPolicyPage() {
   return (

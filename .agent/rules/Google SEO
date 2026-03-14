@@ -1,0 +1,82 @@
+# 🛸 Antigravity: Master SEO Optimization Protocol
+
+**Versão:** 3.0 | **Referência:** Google Search Central (Guidelines 2024-2026)
+**Foco:** Otimização Técnica, Relevância Médica (YMYL) e Experiência do Usuário (UX).
+
+---
+
+## 1. O Pipeline da Busca (Framework Operacional)
+
+O Antigravity deve agir sobre as três etapas fundamentais do motor de busca do Google:
+
+### A. Rastreamento (Crawling)
+O Google descobre páginas via links e sitemaps. Não existe um registro central de todas as páginas da web.
+- **Protocolo:** Garantir que o Googlebot encontre e consiga baixar o código-fonte.
+- **Links Rastreáveis:** Usar exclusivamente tags <a> com atributos href. O Google NÃO segue botões que dependem de eventos de JavaScript (onClick) para navegar.
+- **Crawl Budget:** Usar o robots.txt para impedir que o bot perca tempo em áreas administrativas (/admin) ou resultados de busca internos infinitos.
+- **Sinal de Carga:** Se o servidor retornar erros 5xx, o agente deve reduzir a frequência de requisições (mecanismo de slow down).
+
+### B. Indexação (Indexing)
+Análise do texto, imagens e vídeos para armazenamento no índice (banco de dados).
+- **Renderização:** O Googlebot utiliza uma versão atualizada do Chrome para executar o JavaScript. O Antigravity deve garantir que o conteúdo principal esteja visível no DOM após o carregamento, sem exigir interação do usuário.
+- **Canônicas:** Identificar URLs duplicadas e definir a versão principal via rel="canonical" para evitar a diluição da autoridade da página.
+- **Metadados:** Gerar títulos (<title>) e meta-descrições únicos e precisos.
+
+### C. Exibição (Serving)
+Retorno dos resultados baseados em relevância, qualidade e contexto (localização, dispositivo).
+- **Intenção de Busca:** Alinhar o conteúdo com o que o usuário realmente procura (ex: uma questão específica de prova vs. um resumo de tema).
+
+---
+
+## 2. Checklist Técnico para Desenvolvedores (Next.js/SQL)
+
+| Recurso | Regra de Ouro | Implementação Detalhada |
+| :--- | :--- | :--- |
+| Status Codes | Sem erros silenciosos | 301 para mudanças permanentes; 404 real para páginas deletadas. Evite "Soft 404". |
+| URLs | Estrutura Semântica | Slugs descritivos (ex: /questoes/neurologia/cefaleia-salvas) em vez de IDs opacos. |
+| Sitemaps | O mapa da mina | Arquivo XML dinâmico listando todas as páginas de questões e artigos importantes. |
+| Mobile-First | O padrão é mobile | O design deve ser totalmente responsivo; o Google rastreia prioritariamente a versão móvel. |
+| HTTPS | Segurança é ranking | Todos os recursos (scripts, CSS, imagens) devem ser servidos via HTTPS. |
+
+---
+
+## 3. Diretrizes de Conteúdo "People-First" (E-E-A-T)
+
+Especialmente crítico para o MedLibre (segmento Your Money or Your Life - YMYL).
+
+- **Originalidade:** Não copiar ou apenas "refrasear" conteúdos de outros sites de questões. O valor deve vir de comentários originais e curadoria médica.
+- **Autoridade Médica:** O conteúdo deve demonstrar Experiência, Especialidade, Autoridade e Trust (Confiança). Linkar para fontes oficiais e diretrizes (SBC, Febrasgo, etc.).
+- **Anchor Text:** Os links internos devem ter texto descritivo. Em vez de "clique aqui", use "veja mais questões de Cardiologia".
+- **Organização:** Usar cabeçalhos (H1, H2, H3) para criar uma hierarquia lógica. O Google usa esses títulos para gerar title links nos resultados.
+
+---
+
+## 4. Otimização de Mídias (Imagens e Vídeos)
+
+- **Alt Text:** Obrigatório em todas as imagens (descrição técnica e acessível).
+- **Contexto:** Colocar imagens perto de textos relevantes. O texto circundante ajuda o Google a entender a imagem.
+- **Alta Qualidade:** Usar imagens nítidas para garantir que o usuário consiga distinguir detalhes (importante em radiografias ou lâminas de patologia).
+- **Vídeos:** Páginas com vídeos devem ter títulos e descrições claras para que o Google Video bot consiga indexá-los.
+
+---
+
+## 5. Anti-Patterns: O que NÃO Fazer
+
+- **Keyword Stuffing:** Não repetir palavras-chave exaustivamente de forma antinatural.
+- **Meta Keywords:** Ignorar completamente; o Google não as utiliza para rankeamento desde 2009.
+- **Conteúdo Invisível:** Jamais colocar texto da mesma cor do fundo para tentar enganar o bot.
+- **Ads Distrativos:** Evitar anúncios que cubram o conteúdo principal ou dificultem a leitura (intersticiais intrusivos).
+- **Word Count:** Não focar em "número de palavras". Uma resposta curta e precisa é melhor que um texto longo e irrelevante.
+
+---
+
+## 6. Ferramentas de Manutenção e Diagnóstico
+
+1. Search Console: Monitorar erros de indexação e performance de cliques.
+2. Rich Results Test: Validar se o JSON-LD (Structured Data) está correto para habilitar estrelas de avaliação e carrosséis.
+3. URL Inspection Tool: Usar para ver exatamente como o Googlebot renderiza uma questão do MedLibre.
+4. PageSpeed Insights: Manter as métricas de Core Web Vitals (LCP, INP, CLS) no verde.
+
+---
+**Status do Agente:** Configurado para Otimização Máxima.
+**Referência Técnica:** Google Search Essentials & SEO Starter Guide.

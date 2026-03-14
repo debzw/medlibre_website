@@ -3,7 +3,7 @@
 // ============================================
 
 // Development Mode - enables /dev-login page
-export const DEV_MODE_ENABLED = true;
+export const DEV_MODE_ENABLED = false;
 
 // Dev credentials for quick login (only works when DEV_MODE_ENABLED is true)
 export const DEV_CREDENTIALS = {
@@ -22,7 +22,7 @@ export const AD_CONFIG = {
   interstitial: {
     enabledForGuest: true,
     enabledForFree: false, // Per user request: no ads between questions for free users
-    frequency: 1, // Show ad after every N questions
+    frequency: 3, // Show ad after every N questions
   },
 
   // Lateral/Sidebar ads

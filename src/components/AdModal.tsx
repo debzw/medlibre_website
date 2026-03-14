@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Zap, Sparkles, Layout, Shield } from 'lucide-react';
+import { X, Zap, Layout, Shield } from 'lucide-react';
 import { AdBanner } from './AdBanner';
 
 interface AdModalProps {
@@ -15,32 +14,9 @@ interface AdModalProps {
 }
 
 export function AdModal({ isOpen, onClose, isLoginCTA }: AdModalProps) {
-  const [countdown, setCountdown] = useState(5);
-  const [canClose, setCanClose] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setCountdown(5);
-      setCanClose(false);
-
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            setCanClose(true);
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(timer);
-    }
-  }, [isOpen]);
-
   return (
-    <Dialog open={isOpen} onOpenChange={canClose ? onClose : undefined}>
-      <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden border-none shadow-2xl [&>button]:hidden">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden border-none shadow-2xl">
         <DialogTitle className="sr-only">Aviso ou Anúncio</DialogTitle>
         <div className="flex flex-col">
           {isLoginCTA ? (
@@ -105,11 +81,9 @@ export function AdModal({ isOpen, onClose, isLoginCTA }: AdModalProps) {
           ) : (
             <div className="p-6 flex flex-col items-center">
               <div className="w-full h-6 flex items-center justify-end">
-                {!canClose && (
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground/50 px-2 py-1 bg-muted/50 rounded-md">
-                    Publicidade • {countdown}s
-                  </span>
-                )}
+                <span className="text-[10px] uppercase font-bold text-muted-foreground/50 px-2 py-1 bg-muted/50 rounded-md">
+                  Publicidade
+                </span>
               </div>
 
               <div className="w-full flex justify-center py-4">
@@ -120,18 +94,11 @@ export function AdModal({ isOpen, onClose, isLoginCTA }: AdModalProps) {
 
               <Button
                 onClick={onClose}
-                disabled={!canClose}
-                variant={canClose ? 'default' : 'secondary'}
-                className={`w-full mt-4 transition-all ${canClose ? 'h-12 font-bold btn-amber shadow-lg shadow-amber-500/20 text-base' : 'h-9 text-xs font-normal opacity-50 bg-black/5 hover:bg-black/5 dark:bg-white/5 disabled:opacity-50'}`}
+                variant="default"
+                className="w-full mt-4 h-12 font-bold btn-amber shadow-lg shadow-amber-500/20 text-base"
               >
-                {canClose ? (
-                  <>
-                    <X className="w-4 h-4 mr-2" />
-                    Fechar Anúncio
-                  </>
-                ) : (
-                  `Fechar em ${countdown}s`
-                )}
+                <X className="w-4 h-4 mr-2" />
+                Fechar Anúncio
               </Button>
             </div>
           )}

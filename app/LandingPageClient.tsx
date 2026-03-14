@@ -1,31 +1,10 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Sparkles, Target } from 'lucide-react';
+import Link from 'next/link';
 
 export default function LandingPageClient() {
-    const router = useRouter();
-
-    useEffect(() => {
-        const handleKeyPress = (event: KeyboardEvent) => {
-            // Allow only letters (a-z, A-Z), Enter, and Space
-            const isLetter = /^[a-zA-Z]$/.test(event.key);
-            const isEnter = event.key === 'Enter';
-            const isSpace = event.key === ' ';
-
-            if (isLetter || isEnter || isSpace) {
-                router.push('/app');
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyPress);
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyPress);
-        };
-    }, [router]);
 
     return (
         <div className="min-h-screen bg-background relative flex flex-col">
@@ -50,37 +29,34 @@ export default function LandingPageClient() {
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-6 max-w-xl mx-auto w-full px-4">
-                        <Button
-                            size="lg"
-                            className="h-auto py-8 text-lg flex flex-col gap-3 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-primary/25 border border-primary/20"
-                            onClick={() => router.push('/app')}
-                        >
-                            <Sparkles className="w-8 h-8 mb-1 text-primary-foreground/90" />
-                            <div>
-                                <span className="font-bold block text-xl">Não pensa, só vai</span>
-                                <span className="text-sm font-normal opacity-90">Deixa o algoritmo te levar</span>
-                            </div>
-                        </Button>
+                        <Link href="/app" className="contents">
+                            <Button
+                                size="lg"
+                                className="h-auto py-8 text-lg flex flex-col gap-3 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-primary/25 border border-primary/20"
+                            >
+                                <Sparkles className="w-8 h-8 mb-1 text-primary-foreground/90" />
+                                <div>
+                                    <span className="font-bold block text-xl">Não pensa, só vai</span>
+                                    <span className="text-sm font-normal opacity-90">Deixa o algoritmo te levar</span>
+                                </div>
+                            </Button>
+                        </Link>
 
-                        <Button
-                            size="lg"
-                            variant="outline"
-                            className="h-auto py-8 text-lg flex flex-col gap-3 hover:scale-105 transition-all duration-300 bg-background/50 backdrop-blur border-border hover:border-primary/50 hover:bg-primary/5"
-                            onClick={() => router.push('/setup')}
-                        >
-                            <Target className="w-8 h-8 mb-1 text-primary" />
-                            <div>
-                                <span className="font-bold block text-xl">Modo Focado</span>
-                                <span className="text-sm font-normal text-muted-foreground">Escolha temas específicos</span>
-                            </div>
-                        </Button>
+                        <Link href="/setup" className="contents">
+                            <Button
+                                size="lg"
+                                variant="outline"
+                                className="h-auto py-8 text-lg flex flex-col gap-3 hover:scale-105 transition-all duration-300 bg-background/50 backdrop-blur border-border hover:border-primary/50 hover:bg-primary/5"
+                            >
+                                <Target className="w-8 h-8 mb-1 text-primary" />
+                                <div>
+                                    <span className="font-bold block text-xl">Modo Focado</span>
+                                    <span className="text-sm font-normal text-muted-foreground">Escolha temas específicos</span>
+                                </div>
+                            </Button>
+                        </Link>
                     </div>
 
-                    <div className="pt-8">
-                        <p className="text-sm text-muted-foreground/60">
-                            Pressione <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100"><span className="text-xs">Enter</span></kbd> para começar agora
-                        </p>
-                    </div>
                 </div>
 
 

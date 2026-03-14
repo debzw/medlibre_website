@@ -1,4 +1,12 @@
 import React from 'react';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Termos de Uso | Medlibre',
+    description: 'Termos de uso da plataforma Medlibre. Condições para utilização do banco de questões para residência médica.',
+    robots: { index: false, follow: false },
+    alternates: { canonical: 'https://medlibre.com.br/termos' },
+};
 
 export default function TermsOfServicePage() {
     return (
