@@ -9,7 +9,7 @@ import { AdModal } from '@/components/AdModal';
 import { LimitReachedCard } from '@/components/LimitReachedCard';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/LoadingState';
-import { useQuestions, useFilterOptions } from '@/hooks/useQuestions';
+import { useQuestions, useFilterOptions, useQuestionById } from '@/hooks/useQuestions';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useQuestionHistory } from '@/hooks/useQuestionHistory';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,8 @@ export default function QuestionsPage() {
 
     const status = searchParams.get('status') as 'all_answered' | 'correct' | 'incorrect' | null;
     const testAd = searchParams.get('test_ad');
+    const sharedQuestionId = searchParams.get('questao');
+    const { question: sharedQuestion, loading: sharedLoading } = useQuestionById(sharedQuestionId);
 
     // Debug trigger for AdModal
     useEffect(() => {
@@ -86,15 +88,19 @@ export default function QuestionsPage() {
     const { toast } = useToast();
 
     const questions = useMemo(() => {
+        let base = allQuestions;
+        if (sharedQuestion && !base.some(q => q.id === sharedQuestion.id)) {
+            base = [sharedQuestion, ...base];
+        }
         const historyIds = new Set(questionHistory);
         // If viewing status-based history, don't filter out answered questions
-        if (status || !hideAnswered) return allQuestions;
-        return allQuestions.filter(q =>
+        if (status || !hideAnswered) return base;
+        return base.filter(q =>
             !checkIfAnswered(q.id) ||
             q.id === currentQuestionId ||
             historyIds.has(q.id)
         );
-    }, [allQuestions, hideAnswered, checkIfAnswered, currentQuestionId, questionHistory, status]);
+    }, [allQuestions, sharedQuestion, hideAnswered, checkIfAnswered, currentQuestionId, questionHistory, status]);
 
     const showInterstitialAds = (
         (userType === 'guest' && AD_CONFIG.interstitial.enabledForGuest) ||
@@ -335,7 +341,7 @@ export default function QuestionsPage() {
                     )}
 
                     {/* Content */}
-                    {questionsLoading ? (
+                    {(questionsLoading || sharedLoading) ? (
                         <LoadingState message={
                             isSearchMode
                                 ? (activeSearch && activeSearch.trim().split(/\s+/).length > 4

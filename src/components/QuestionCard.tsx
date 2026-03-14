@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Question, QuestionHistoryEntry } from '@/types/database';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, MoreVertical, Flag } from 'lucide-react';
+import { Check, X, MoreVertical, Flag, Link } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuestionHistory } from '@/hooks/useQuestionHistory';
 import type { ConfidenceLevel } from '@/hooks/useQuestionHistory';
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AdBanner } from './AdBanner';
 import { ReportDialog } from './modals/ReportDialog';
+import { toast } from '@/components/ui/sonner';
 
 interface QuestionCardProps {
   question: Question;
@@ -31,6 +32,13 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
   const { saveAnswer, saveSRSFeedback } = useQuestionHistory();
   const { user, userType } = useAuthContext();
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/app?questao=${question.id}`;
+    navigator.clipboard.writeText(url)
+      .then(() => toast('Link copiado!', { description: 'Cole para compartilhar esta questão.', duration: 2500 }))
+      .catch(() => toast('Erro ao copiar link'));
+  };
 
   // Reset or restore state when question changes
   // Reset state when question changes
@@ -158,6 +166,10 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="rounded-xl">
+            <DropdownMenuItem onClick={handleCopyLink} className="gap-2 cursor-pointer">
+              <Link className="h-4 w-4" />
+              Copiar link
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setIsReportDialogOpen(true)}
               className="gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"

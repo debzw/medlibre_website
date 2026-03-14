@@ -47,7 +47,7 @@ function parseQuestions(raw: any[]): Question[] {
 }
 
 export function useQuestions(filters: UseQuestionsOptions = {}) {
-  const { user } = useAuthContext();
+  const { user, loading: authLoading } = useAuthContext();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -61,8 +61,11 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
   const isSearchMode = !!(filters.search && filters.search.trim().length > 0);
 
-  // Reset cursor and results whenever filters (including search text) change
+  // Reset cursor and results whenever filters (including search text) change.
+  // Guard: wait for auth to resolve before fetching — avoids a wasted guest-path
+  // fetch followed by a second correct fetch when user.id becomes available.
   useEffect(() => {
+    if (authLoading) return;
     setSearchCursor(null);
     setQuestions([]);
     fetchQuestions();
@@ -76,6 +79,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
     filters.hideAnswered,
     filters.status,
     user?.id,
+    authLoading,
   ]);
 
   // ─── Search RPC path (funnel: Layer 1 → 2 → 3) ───────────────────────────
@@ -181,7 +185,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
         if (user && !filters.status) {
           const { data: rpcData, error: rpcError } = await supabase.rpc('get_study_session_questions', {
             p_user_id: user.id,
-            p_limit: 50,
+            p_limit: 20,
             p_hide_answered: filters.hideAnswered || false,
             p_banca: filters.banca !== 'all' ? filters.banca : null,
             p_ano: filters.ano !== 0 ? filters.ano : null,
@@ -381,4 +385,25 @@ export function useFilterOptions() {
   }, []);
 
   return { options, loading };
+}
+
+export function useQuestionById(id: string | null) {
+  const [question, setQuestion] = useState<Question | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    setLoading(true);
+    supabase
+      .from('questions')
+      .select('*')
+      .eq('id', id)
+      .single()
+      .then(({ data, error }) => {
+        setQuestion(data && !error ? parseQuestions([data])[0] : null);
+        setLoading(false);
+      });
+  }, [id]);
+
+  return { question, loading };
 }
