@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Question, FilterOptions } from '@/types/database';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -61,11 +61,19 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
   const isSearchMode = !!(filters.search && filters.search.trim().length > 0);
 
-  // Reset cursor and results whenever filters (including search text) change.
-  // Guard: wait for auth to resolve before fetching — avoids a wasted guest-path
-  // fetch followed by a second correct fetch when user.id becomes available.
+  // Track previous authLoading to detect the transition from loading→resolved.
+  const prevAuthLoadingRef = useRef(authLoading);
+
+  // Fetch immediately — don't wait for auth to resolve.
+  // If auth was loading and just resolved as guest (user=null), skip the refetch
+  // since the optimistic guest-path fetch already ran and has the right data.
+  // When auth resolves with a real user, re-fetch with the SRS path.
   useEffect(() => {
-    if (authLoading) return;
+    const authJustResolvedAsGuest = prevAuthLoadingRef.current === true && !authLoading && !user;
+    prevAuthLoadingRef.current = authLoading;
+
+    if (authJustResolvedAsGuest) return;
+
     setSearchCursor(null);
     setQuestions([]);
     fetchQuestions();
