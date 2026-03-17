@@ -74,6 +74,19 @@ export interface QuestionHistoryEntry {
     time_spent_seconds: number | null;
     campo_medico?: string;
     banca?: string;
+    session_id?: string | null;
+}
+
+export interface StudySession {
+    id: string;
+    user_id: string;
+    started_at: string;
+    ended_at: string | null;
+    last_activity_at: string;
+    questions_attempted: number;
+    questions_correct: number;
+    total_time_seconds: number;
+    session_type: string;
 }
 
 export interface UserSpacedRepetition {
@@ -114,6 +127,14 @@ export interface Report {
     created_at: string;
 }
 
+export interface UserDailyStats {
+    user_id: string;
+    stat_date: string;      // DATE as string
+    total_answered: number;
+    total_correct: number;
+    total_time_seconds: number;
+}
+
 export type Database = {
     public: {
         Tables: {
@@ -147,6 +168,18 @@ export type Database = {
                 Update: Partial<UserThemeStats>;
                 Relationships: any[];
             };
+            user_daily_stats: {
+                Row: UserDailyStats;
+                Insert: Partial<UserDailyStats>;
+                Update: Partial<UserDailyStats>;
+                Relationships: any[];
+            };
+            study_sessions: {
+                Row: StudySession;
+                Insert: Partial<StudySession>;
+                Update: Partial<StudySession>;
+                Relationships: any[];
+            };
             reports: {
                 Row: Report;
                 Insert: Partial<Report>;
@@ -174,8 +207,46 @@ export type Database = {
                 Args: any;
                 Returns: Json;
             };
+            record_answer: {
+                Args: {
+                    p_question_id: string;
+                    p_selected_answer: number;
+                    p_is_correct: boolean;
+                    p_time_spent?: number | null;
+                    p_idempotency_key?: string;
+                    p_source_bucket?: string;
+                    p_session_id?: string | null;
+                };
+                Returns: { was_duplicate: boolean; today_count: number };
+            };
+            get_study_session_questions_v2: {
+                Args: {
+                    p_user_id: string;
+                    p_limit?: number;
+                    p_hide_answered?: boolean;
+                    p_banca?: string | null;
+                    p_ano?: number | null;
+                    p_campo?: string | null;
+                    p_especialidade?: string | null;
+                    p_tema?: string | null;
+                };
+                Returns: (Question & { source_bucket: string })[];
+            };
+            start_study_session: {
+                Args: { p_session_id: string; p_session_type?: string };
+                Returns: void;
+            };
+            end_study_session: {
+                Args: {
+                    p_session_id: string;
+                    p_questions_attempted: number;
+                    p_questions_correct: number;
+                    p_total_time_seconds: number;
+                };
+                Returns: void;
+            };
             increment_daily_usage: {
-                Args: any;
+                Args: Record<string, never>;
                 Returns: number;
             };
             increment_pdf_usage: {

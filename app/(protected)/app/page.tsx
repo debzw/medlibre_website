@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/LoadingState';
 import { useQuestions, useFilterOptions, useQuestionById } from '@/hooks/useQuestions';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useQuestionHistory } from '@/hooks/useQuestionHistory';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ArrowLeft, TrendingUp, Search, Loader2 } from 'lucide-react';
@@ -61,6 +62,7 @@ export default function QuestionsPage() {
     const { options, loading: optionsLoading } = useFilterOptions();
     const {
         questions: allQuestions,
+        questionBuckets,
         loading: questionsLoading,
         loadingMore,
         error: questionsError,
@@ -81,10 +83,39 @@ export default function QuestionsPage() {
     const activeSearch = searchParams.get('search');
     const isSearchMode = !!(activeSearch && activeSearch.trim().length > 0);
 
-    const { userType, canAnswerMore, incrementUsage, getRemainingQuestions, isFirstGuestInterstitial, markInterstitialAsShown } = useAuthContext();
+    const { user, userType, canAnswerMore, getRemainingQuestions, isFirstGuestInterstitial, markInterstitialAsShown } = useAuthContext();
     const { isQuestionAnswered: checkIfAnswered, getQuestionAttempts } = useQuestionHistory();
     const questionsAnsweredSinceAd = useRef(0);
     const timerRef = useRef<QuestionTimerRef>(null);
+
+    // ── Session tracking ──────────────────────────────────────────────────────
+    const sessionIdRef = useRef<string>(crypto.randomUUID());
+    const sessionStartedAt = useRef<number>(Date.now());
+    const sessionQuestionsAttempted = useRef<number>(0);
+    const sessionQuestionsCorrect = useRef<number>(0);
+
+    // ── Study session lifecycle ───────────────────────────────────────────────
+    useEffect(() => {
+        if (!user) return;
+
+        supabase.rpc('start_study_session', {
+            p_session_id: sessionIdRef.current,
+            p_session_type: 'study',
+        }).then(({ error }) => {
+            if (error) console.warn('start_study_session:', error.message);
+        });
+
+        return () => {
+            const totalTime = Math.round((Date.now() - sessionStartedAt.current) / 1000);
+            supabase.rpc('end_study_session', {
+                p_session_id: sessionIdRef.current,
+                p_questions_attempted: sessionQuestionsAttempted.current,
+                p_questions_correct: sessionQuestionsCorrect.current,
+                p_total_time_seconds: totalTime,
+            }).then(() => {}, (err: any) => console.warn('end_study_session:', err));
+        };
+    }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const { toast } = useToast();
 
     const questions = useMemo(() => {
@@ -140,13 +171,15 @@ export default function QuestionsPage() {
     const historyEntry = currentQuestionId ? getQuestionAttempts(currentQuestionId)?.[0] : undefined;
     const isQuestionAnswered = !!historyEntry || recentlyAnsweredId === currentQuestionId;
 
-    const handleAnswered = async (selectedAnswer: number, isCorrect: boolean) => {
+    const handleAnswered = async (_selectedAnswer: number, isCorrect: boolean) => {
         if (currentQuestionId) setRecentlyAnsweredId(currentQuestionId);
         timerRef.current?.pause();
 
         if (!isQuestionAnswered) {
-            await incrementUsage();
+            // incrementUsage is handled by QuestionCard via the record_answer RPC result
             questionsAnsweredSinceAd.current += 1;
+            sessionQuestionsAttempted.current += 1;
+            if (isCorrect) sessionQuestionsCorrect.current += 1;
         }
     };
 
@@ -341,7 +374,7 @@ export default function QuestionsPage() {
                     )}
 
                     {/* Content */}
-                    {(questionsLoading || sharedLoading) ? (
+                    {(sharedQuestionId ? sharedLoading : questionsLoading) ? (
                         <LoadingState message={
                             isSearchMode
                                 ? (activeSearch && activeSearch.trim().split(/\s+/).length > 4
@@ -396,6 +429,8 @@ export default function QuestionsPage() {
                                 onAnswered={handleAnswered}
                                 canAnswer={canAnswerMore()}
                                 historyEntry={historyEntry}
+                                sourceBucket={questionBuckets[currentQuestion.id] ?? 'unknown'}
+                                sessionId={user ? sessionIdRef.current : undefined}
                             />
                             <div className="flex justify-between items-center gap-4 animate-fade-in shadow-sm rounded-xl py-2">
                                 {historyIndex > 0 ? (

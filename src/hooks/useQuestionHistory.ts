@@ -210,8 +210,7 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
         return localHistory;
       }
 
-      // Optimization: Fetch only necessary fields for "isAnswered" checks
-      // We don't need the full question join here anymore
+      // Fetch only necessary fields for "isAnswered" / "getQuestionAttempts" checks
       const { data, error } = await supabase
         .from('user_question_history')
         .select('id, user_id, question_id, is_correct, selected_answer, answered_at, time_spent_seconds')
@@ -226,10 +225,10 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
       return data as QuestionHistoryEntry[];
     },
     enabled: !!user,
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    // 30s cache: prevents refetch-storms on tab-focus / component-remount.
+    // History is updated via cache invalidation in onSuccess, not re-fetched continuously.
+    staleTime: 30_000,
+    gcTime:    300_000,
   });
 
   const { data: stats } = useQuery({
@@ -291,6 +290,9 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
       timeSpentSeconds,
       campo_medico,
       banca,
+      idempotencyKey,
+      sourceBucket = 'unknown',
+      sessionId,
     }: {
       questionId: string;
       selectedAnswer: number;
@@ -298,14 +300,20 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
       timeSpentSeconds?: number;
       campo_medico?: string;
       banca?: string;
+      /** Client-generated UUID — prevents duplicate rows on retries / double-clicks */
+      idempotencyKey: string;
+      /** Which algorithm bucket served this question: 'srs'|'weak_theme'|'discovery'|'general'|'cold_start'|'manual'|'unknown' */
+      sourceBucket?: string;
+      /** Study session UUID — links this answer to a study_sessions row */
+      sessionId?: string;
     }) => {
-      // Always cache question metadata
+      // Always cache question metadata locally for offline-style use
       if (campo_medico && banca) {
         updateQuestionsCache(questionId, campo_medico, banca);
       }
 
       const newLocalEntry: QuestionHistoryEntry = {
-        id: crypto.randomUUID(),
+        id: idempotencyKey,
         user_id: user?.id || 'guest',
         question_id: questionId,
         selected_answer: selectedAnswer,
@@ -320,28 +328,30 @@ export function useQuestionHistory(timeFilter: TimeFilter = 'all') {
         const localHistory = getLocalHistory();
         localHistory.unshift(newLocalEntry);
         saveLocalHistory(localHistory);
-        return newLocalEntry;
+        return { localEntry: newLocalEntry, today_count: null, was_duplicate: false };
       }
 
-      // Always insert new record (allow multiple attempts)
+      // ── Atomic RPC: single transaction, idempotent via ON CONFLICT DO NOTHING ──
+      // record_answer handles the INSERT + trigger-maintained user_daily_stats update.
       const { data, error } = await supabase
-        .from('user_question_history')
-        .insert({
-          user_id: user.id,
-          question_id: questionId,
-          selected_answer: selectedAnswer,
-          is_correct: isCorrect,
-          time_spent_seconds: timeSpentSeconds ?? null,
-        })
-        .select()
-        .single();
+        .rpc('record_answer', {
+          p_question_id:     questionId,
+          p_selected_answer: selectedAnswer,
+          p_is_correct:      isCorrect,
+          p_time_spent:      timeSpentSeconds ?? null,
+          p_idempotency_key: idempotencyKey,
+          p_source_bucket:   sourceBucket,
+          p_session_id:      sessionId ?? null,
+        });
 
       if (error) {
-        console.error('Error saving answer:', error.message, '| code:', error.code, '| details:', error.details, '| hint:', error.hint);
+        console.error('Error saving answer via record_answer RPC:',
+          error.message, '| code:', error.code, '| hint:', error.hint);
         throw error;
       }
 
-      return data;
+      // data = { was_duplicate: boolean, today_count: number }
+      return data as { was_duplicate: boolean; today_count: number };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questionHistory', user?.id] });

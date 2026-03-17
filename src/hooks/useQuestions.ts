@@ -49,6 +49,7 @@ function parseQuestions(raw: any[]): Question[] {
 export function useQuestions(filters: UseQuestionsOptions = {}) {
   const { user, loading: authLoading } = useAuthContext();
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [questionBuckets, setQuestionBuckets] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -191,7 +192,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
         // Try SRS RPC if user is logged in and no status filter
         if (user && !filters.status) {
-          const { data: rpcData, error: rpcError } = await supabase.rpc('get_study_session_questions', {
+          const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('get_study_session_questions_v2', {
             p_user_id: user.id,
             p_limit: 20,
             p_hide_answered: filters.hideAnswered || false,
@@ -203,6 +204,12 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           });
 
           if (!rpcError) {
+            // Build question→bucket map from the extra source_bucket column
+            const buckets: Record<string, string> = {};
+            (rpcData as any[] || []).forEach((row: any) => {
+              buckets[row.id] = row.source_bucket ?? 'unknown';
+            });
+            setQuestionBuckets(buckets);
             data = rpcData;
             usedRPC = true;
           } else {
@@ -337,6 +344,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
   return {
     questions,
+    questionBuckets,
     loading,
     loadingMore,
     error,

@@ -1,0 +1,290 @@
+# Strategic Plan: Professionalizing the MedLibre Analytics Engine
+
+> **Scope**: This document is a **comprehensive architectural evaluation and strategic plan**, as requested. It is NOT a code-change implementation plan — it is a deliverable analysis document for the platform owners to review, discuss, and prioritize.
+
+---
+
+## 1. Root Cause Analysis — Why "Ghost Data" Happens
+
+After a full audit of the codebase, I identified **6 concrete failure vectors** that explain inflated or inaccurate counts:
+
+### 🔴 Critical: Dual-Write Counter Drift
+
+The system maintains **two independent sources of truth** for "how many questions were answered today":
+
+| Source | Location | Mechanism |
+|---|---|---|
+| **Counter** | `user_profiles.questions_answered_today` | Incremented via [increment_daily_usage](file:///c:/medlibre_website/supabase/migrations/20260210000000_add_increment_daily_usage.sql) RPC |
+| **Event log** | `user_question_history` rows | One INSERT per answer via [useQuestionHistory.ts](file:///c:/medlibre_website/src/hooks/useQuestionHistory.ts#L327-L337) |
+
+These two writes are **not transactional**. If `increment_daily_usage` succeeds but the history INSERT fails (or vice versa), the counter drifts from reality. Over time, this creates a permanent, compounding mismatch.
+
+### 🔴 Critical: No Idempotency Guard
+
+In [QuestionCard.tsx](file:///c:/medlibre_website/src/components/QuestionCard.tsx#L51-L77), the `handleOptionClick` function calls `saveAnswer()` which does a raw `INSERT` with no idempotency key. If the user:
+- Double-clicks quickly
+- Experiences a slow network (promise resolves, React re-renders, triggers again)
+- Has `React.StrictMode` in dev (double invocations)
+
+...then **duplicate rows** are created in `user_question_history`. There is no `UNIQUE` constraint on `(user_id, question_id, answered_at)` or any client-side mutex.
+
+### 🟡 Moderate: The `staleTime: 0` Refetch Storm
+
+In [useQuestionHistory.ts:229](file:///c:/medlibre_website/src/hooks/useQuestionHistory.ts#L228-L233):
+```ts
+staleTime: 0,
+gcTime: 0,
+refetchOnWindowFocus: true,
+refetchOnMount: true,
+```
+This forces a **full table scan** (`SELECT * FROM user_question_history WHERE user_id = ...`) on every component mount, tab focus, and navigation. Each refetch re-fetches the entire history (unbounded `ORDER BY answered_at DESC`). As user history grows, this becomes a performance bottleneck **and** can trigger TanStack Query's `onSuccess` → `invalidateQueries` → re-refetch cascades.
+
+### 🟡 Moderate: `user_theme_stats` Update is Invisible
+
+The `user_theme_stats` table (used by the study session algorithm) is referenced everywhere but **its update mechanism is not in the codebase**. It's likely maintained by a database trigger or an external process, but this creates a black box where:
+- The study algorithm (SRS + theme mastery) may use stale data
+- Stats could be out of sync with `user_question_history`
+
+### 🟢 Minor: `increment_daily_usage` Date Drift
+
+The `increment_daily_usage` RPC uses `CURRENT_DATE` ([line 28](file:///c:/medlibre_website/supabase/migrations/20260210000000_add_increment_daily_usage.sql#L28)), which is evaluated in the **server's timezone** (likely UTC). A student in BRT (UTC-3) answering at 22:00 BRT = 01:00 UTC → the server counts it as the next day. This causes the counter to reset "early" or show 0 when the student has actually been studying.
+
+### 🟢 Minor: Frontend Counter is Client-Side Optimistic
+
+In [useUsageLimit.ts](file:///c:/medlibre_website/src/hooks/useUsageLimit.ts#L86-L113), `incrementUsage` for authenticated users calls the RPC and updates local state with the returned `newCount`. But if the RPC fails silently (network error caught), the local state stays at the old value while the UI may have already shown the answer. This creates UI-database inconsistency.
+
+---
+
+## 2. Architectural Shift — Counter vs. Event Source
+
+### Current Architecture: "Update-a-Counter"
+
+```mermaid
+graph LR
+    A[QuestionCard] -->|1. saveAnswer| B[INSERT user_question_history]
+    A -->|2. incrementUsage| C[RPC increment_daily_usage]
+    C -->|UPDATE| D[user_profiles.questions_answered_today]
+    B -.->|"No relationship"| D
+```
+
+**Problems**: Two independent writes, no transactional guarantee, counter can drift, no audit trail for the counter itself.
+
+### Recommended: Event-Sourced Model
+
+```mermaid
+graph LR
+    A[QuestionCard] -->|1. Single atomic write| B["INSERT answer_events (immutable log)"]
+    B -->|Trigger| C["Materialized View / Aggregate"]
+    C -->|Provides| D[Dashboard Stats]
+    C -->|Provides| E[Daily Counter]
+    C -->|Provides| F[Theme Mastery]
+```
+
+**Key principle**: The `answer_events` table becomes the **single source of truth**. All counters, stats, and dashboards are **derived** from it via materialized views, CTEs, or database triggers. You never increment a counter directly — you always derive it with `COUNT(*) FROM answer_events WHERE answered_date = CURRENT_DATE`.
+
+### Why Event Sourcing is Required
+
+| Concern | Counter Model | Event-Sourced |
+|---|---|---|
+| **Audit trail** | ❌ No history of counter changes | ✅ Every event is timestamped and immutable |
+| **Data recovery** | ❌ Counter drifts = permanent data loss | ✅ Re-derive from events at any time |
+| **Multi-dimensional analytics** | ❌ One counter per metric = N columns | ✅ Slice events by any dimension (time, theme, banca) |
+| **Debugging** | ❌ "Why is the counter at 47?" | ✅ "Show me the 47 events" |
+| **Scalability** | ❌ UPDATE contention on user_profiles row | ✅ Append-only INSERTs are lock-free |
+
+---
+
+## 3. Data Integrity Framework
+
+### 3.1 Idempotency Strategy
+
+**Recommended**: Add a client-generated `idempotency_key` to every answer event.
+
+```sql
+ALTER TABLE user_question_history
+  ADD COLUMN idempotency_key UUID NOT NULL DEFAULT gen_random_uuid(),
+  ADD CONSTRAINT uq_idempotency UNIQUE (idempotency_key);
+```
+
+**Frontend**: Generate the key **once** when the question loads (not on click):
+```ts
+const idempotencyKey = useRef(crypto.randomUUID());
+// Reset when question changes
+useEffect(() => { idempotencyKey.current = crypto.randomUUID(); }, [question.id]);
+```
+
+**Backend**: The `UNIQUE` constraint on `idempotency_key` ensures that duplicate POSTs with the same key are rejected at the database level (409 Conflict), regardless of network retries, double-clicks, or React re-renders.
+
+### 3.2 Atomic Transactions
+
+Replace the current dual-write with a **single server-side RPC**:
+
+```sql
+CREATE OR REPLACE FUNCTION record_answer(
+  p_user_id UUID, p_question_id UUID, p_selected_answer INT,
+  p_is_correct BOOLEAN, p_time_spent INT, p_idempotency_key UUID
+) RETURNS VOID AS $$
+BEGIN
+  -- Single atomic INSERT (idempotency constraint handles dupes)
+  INSERT INTO user_question_history (user_id, question_id, selected_answer,
+    is_correct, time_spent_seconds, idempotency_key)
+  VALUES (p_user_id, p_question_id, p_selected_answer, p_is_correct,
+    p_time_spent, p_idempotency_key)
+  ON CONFLICT (idempotency_key) DO NOTHING;
+
+  -- Update theme stats in the same transaction
+  -- Update daily counter in the same transaction (or remove it entirely)
+END;
+$$;
+```
+
+This replaces both the frontend INSERT and the `increment_daily_usage` RPC with a single, atomic operation. The daily counter becomes `SELECT COUNT(*) FROM user_question_history WHERE user_id = $1 AND answered_at::date = CURRENT_DATE`.
+
+---
+
+## 4. Behavioral Intelligence — Beyond Right/Wrong
+
+### Currently Captured
+| Data Point | Location |
+|---|---|
+| Answer (selected index) | `user_question_history.selected_answer` |
+| Correctness | `user_question_history.is_correct` |
+| Time spent (seconds) | `user_question_history.time_spent_seconds` |
+| SRS confidence (0-4) | `user_spaced_repetition.last_confidence` |
+
+### Recommended Additional Data Points
+
+#### 4.1 Session-Level Metrics (new table: `study_sessions`)
+| Field | Type | Insight |
+|---|---|---|
+| `session_id` | UUID | Groups consecutive answers into a study session |
+| `session_start` | TIMESTAMPTZ | When the user started studying |
+| `session_end` | TIMESTAMPTZ | When the last answer was submitted |
+| `questions_attempted` | INT | Total questions in this session |
+| `session_duration_seconds` | INT | Active study time |
+| `device_type` | TEXT | Mobile vs Desktop (inferred from User-Agent) |
+
+**Business value**: Understand session patterns — do users study in short bursts (5 min mobile) or long sessions (45 min desktop)?
+
+#### 4.2 Answer-Level Enrichment (add columns to `user_question_history`)
+| Field | Type | Insight |
+|---|---|---|
+| `answer_changed` | BOOLEAN | Did the user change their initial answer? (hesitation signal) |
+| `time_to_first_click` | INT (ms) | How long before first interaction (reading speed proxy) |
+| `source_bucket` | TEXT | 'srs' / 'weak_theme' / 'discovery' / 'general' — which algorithm bucket served this question |
+| `scroll_depth` | FLOAT | % of question text scrolled (engagement with long vignettes) |
+
+**Business value**: `source_bucket` is critical — it tells you which algorithm path is producing the best learning outcomes. If SRS questions have 90% accuracy but discovery has 40%, that's expected. If weak_theme has 30%, the algorithm needs tuning.
+
+#### 4.3 Engagement Events (new table: `engagement_events`)
+| Event Type | Data | Insight |
+|---|---|---|
+| `session_start` | timestamp, device | When do students study? |
+| `session_pause` | duration_before_pause | Fatigue detection |
+| `explanation_viewed` | question_id, time_reading | Do they read explanations? For how long? |
+| `question_reported` | question_id, reason | Quality signal for question curation |
+| `filter_changed` | from/to values | What do they actually want to study? |
+
+**Business value**: This is the "Netflix-level" data that lets you answer questions like:
+- "Students who read explanations for >30s score 20% higher on similar questions"
+- "60% of mobile users quit after 8 questions — optimize for 8-question micro-sessions"
+- "Questions from ENARE 2024 have a 15% report rate — flag for review"
+
+---
+
+## 5. Dashboard Optimization — Scaling Strategy
+
+### 5.1 Current Pain Points
+
+The `get_user_stats` RPC likely runs aggregations (`COUNT`, `AVG`, `GROUP BY`) directly on `user_question_history` on every page load. As the table grows to millions of rows, these queries will become slower.
+
+### 5.2 Recommended Tiered Architecture
+
+```mermaid
+graph TD
+    A["user_question_history (raw events)"] -->|Trigger on INSERT| B["user_daily_stats (daily aggregates)"]
+    B -->|Nightly cron or trigger| C["user_weekly_stats (weekly rollups)"]
+    A -->|Trigger on INSERT| D["user_theme_stats (per-theme aggregates)"]
+    B --> E[Dashboard Fast Path]
+    D --> E
+```
+
+#### Tier 1: Real-Time (Trigger-Based)
+```sql
+-- Trigger: After INSERT on user_question_history
+-- Updates: user_daily_stats (one row per user per day)
+CREATE TABLE user_daily_stats (
+  user_id UUID NOT NULL,
+  stat_date DATE NOT NULL,
+  total_answered INT DEFAULT 0,
+  total_correct INT DEFAULT 0,
+  total_time_seconds INT DEFAULT 0,
+  avg_time_seconds FLOAT DEFAULT 0,
+  PRIMARY KEY (user_id, stat_date)
+);
+```
+
+Dashboard reads from `user_daily_stats` (one row per day) instead of aggregating thousands of rows in `user_question_history`.
+
+#### Tier 2: Periodic (Cron or Materialized Views)
+For expensive analytics (streaks, weekly trends, comparison charts), use:
+- **Materialized views** refreshed every 15 minutes via `pg_cron`
+- **Pre-computed leaderboards** refreshed hourly
+
+#### Tier 3: Cold Storage
+After 90 days, raw `user_question_history` rows can be archived (moved to a partitioned table or a separate schema) while the aggregated stats remain fast.
+
+### 5.3 Index Strategy for Scale
+
+```sql
+-- Partitioning by month for user_question_history
+CREATE TABLE user_question_history (
+  ...
+) PARTITION BY RANGE (answered_at);
+
+-- Hot partition (current month) stays in memory
+-- Cold partitions (>3 months) can be compressed
+```
+
+---
+
+## 6. Recommended Schema Evolution
+
+### Phase 1: Immediate Fixes (Week 1) — Stop the Bleeding
+1. **Add idempotency constraint** to `user_question_history`
+2. **Add frontend mutex** in `QuestionCard.tsx` (disable button after click)
+3. **Replace `staleTime: 0`** with `staleTime: 30_000` (30s cache)
+4. **Create `record_answer` RPC** that atomically handles the INSERT + counter update
+
+### Phase 2: Event Sourcing Foundation (Week 2-3)
+1. **Deprecate `user_profiles.questions_answered_today`** — derive from events
+2. **Create `user_daily_stats` table** + trigger on `user_question_history` INSERT
+3. **Add `source_bucket` column** to `user_question_history`
+4. **Create `study_sessions` table** + frontend session tracking
+
+### Phase 3: Behavioral Intelligence (Week 4-6)
+1. **Create `engagement_events` table** for non-answer events
+2. **Add enrichment columns** (`answer_changed`, `time_to_first_click`)
+3. **Build admin analytics dashboard** consuming the new data points
+
+### Phase 4: Scale Optimization (Week 6+)
+1. **Partition `user_question_history`** by month
+2. **Create materialized views** for expensive dashboard queries
+3. **Add `pg_cron`** for periodic rollups
+4. **Archive cold data** to partitioned tables
+
+---
+
+## Summary
+
+| Area | Current State | Target State |
+|---|---|---|
+| **Data flow** | Dual-write (counter + row) | Single atomic event INSERT |
+| **Idempotency** | None | Client-generated UUID + UNIQUE constraint |
+| **Daily count** | Independent counter on `user_profiles` | Derived: `COUNT(*) WHERE date = today` |
+| **Analytics depth** | Right/Wrong + time | Session, engagement, source bucket, hesitation signals |
+| **Query performance** | Full scan on every page load | Trigger-maintained daily aggregates |
+| **Audit capability** | None | Full event log, immutable, queryable |
+
+> [!IMPORTANT]
+> The highest-priority fix is **Phase 1** — the idempotency guard and atomic RPC. This alone will eliminate ghost data for new answers going forward. Phases 2-4 build the intelligence layer on top of a now-trustworthy foundation.

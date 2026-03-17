@@ -26,18 +26,20 @@ export function useUsageLimit(
       // Logged in user
       setUserType(userProfile.tier as UserType);
 
-      // Check if we need to reset daily count (Visual only - Server handles actual reset on write)
-      const today = new Date().toISOString().split('T')[0];
-      const profileResetDate = userProfile.last_reset_date;
-
-      // Compare dates - if profile date is older than today, show 0 (will reset on next increment)
-      if (profileResetDate < today) {
-        setQuestionsUsed(0);
-        setPdfsUsed(0);
-      } else {
-        setQuestionsUsed(userProfile.questions_answered_today);
-        setPdfsUsed(userProfile.pdfs_exported_today || 0);
+      // Fetch authoritative count from the server (now derived from events)
+      try {
+        const { data: serverCount, error } = await supabase.rpc('increment_daily_usage');
+        if (!error && typeof serverCount === 'number') {
+          setQuestionsUsed(serverCount);
+        } else {
+          // Fallback to profile if RPC fails
+          setQuestionsUsed(userProfile.questions_answered_today || 0);
+        }
+      } catch (err) {
+        setQuestionsUsed(userProfile.questions_answered_today || 0);
       }
+
+      setPdfsUsed(userProfile.pdfs_exported_today || 0);
     } else {
       // Guest user
       setUserType('guest');
@@ -83,13 +85,26 @@ export function useUsageLimit(
     return newUsage;
   };
 
-  const incrementUsage = useCallback(async () => {
+  /**
+   * Increment the daily usage counter.
+   * @param serverCount - When provided (from the `record_answer` RPC response),
+   *   use it directly instead of making an extra round-trip to `increment_daily_usage`.
+   *   This eliminates the N+1 RPC call after every question answer.
+   */
+  const incrementUsage = useCallback(async (serverCount?: number) => {
     if (isAuthenticated && userProfile) {
       try {
+        // Fast path: server already returned the authoritative count via record_answer
+        if (typeof serverCount === 'number') {
+          setQuestionsUsed(serverCount);
+          return;
+        }
+
+        // Fallback: call increment_daily_usage (now a lightweight SELECT from user_daily_stats)
         const { data: newCount, error } = await supabase.rpc('increment_daily_usage');
 
         if (error) {
-          console.error('Error incrementing usage:', error);
+          console.error('Error reading daily usage:', error);
           return;
         }
 
@@ -97,7 +112,7 @@ export function useUsageLimit(
           setQuestionsUsed(newCount);
         }
       } catch (err) {
-        console.error('Unexpected error incrementing usage:', err);
+        console.error('Unexpected error in incrementUsage:', err);
       }
     } else {
       // Update localStorage for guests

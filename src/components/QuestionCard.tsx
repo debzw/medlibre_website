@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Question, QuestionHistoryEntry } from '@/types/database';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,15 +23,27 @@ interface QuestionCardProps {
   onAnswered: (selectedAnswer: number, isCorrect: boolean) => void;
   canAnswer: boolean;
   historyEntry?: QuestionHistoryEntry;
+  sourceBucket?: string;
+  sessionId?: string;
 }
 
-export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: QuestionCardProps) {
+export function QuestionCard({ question, onAnswered, canAnswer, historyEntry, sourceBucket = 'unknown', sessionId }: QuestionCardProps) {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const startTimeRef = useRef<number>(Date.now());
   const { saveAnswer, saveSRSFeedback } = useQuestionHistory();
-  const { user, userType } = useAuthContext();
+  const { user, userType, incrementUsage } = useAuthContext();
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+
+  // ── Idempotency: one UUID per question-view, reset when question changes ──
+  // This UUID is passed to the DB. The UNIQUE constraint on idempotency_key
+  // ensures that even if handleOptionClick fires twice (double-click, StrictMode,
+  // network retry), only ONE row is ever inserted.
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+
+  // ── Mutex: prevents the async saveAnswer from being called a second time
+  // while the first is still in-flight (belt-and-suspenders alongside idempotency key).
+  const isSavingRef = useRef<boolean>(false);
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/app?questao=${question.id}`;
@@ -40,19 +52,24 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
       .catch(() => toast('Erro ao copiar link'));
   };
 
-  // Reset or restore state when question changes
-  // Reset state when question changes
+  // Reset state AND generate a fresh idempotency key when the question changes
   useEffect(() => {
     setSelectedOption(null);
     setShowResult(false);
     startTimeRef.current = Date.now();
+    idempotencyKeyRef.current = crypto.randomUUID();
+    isSavingRef.current = false;
   }, [question.id]);
 
-  const handleOptionClick = async (index: number) => {
-    if (!canAnswer || showResult) return;
+  const handleOptionClick = useCallback(async (index: number) => {
+    // Guard: already answered or mid-save (mutex prevents ghost data)
+    if (!canAnswer || showResult || isSavingRef.current) return;
 
     const isCorrect = index === question.resposta_correta;
     const timeSpent = Math.round((Date.now() - startTimeRef.current) / 1000);
+
+    // Lock immediately — before any async work
+    isSavingRef.current = true;
 
     setSelectedOption(index);
     setShowResult(true);
@@ -60,21 +77,34 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry }: 
     // Save to history if user is logged in
     if (user) {
       try {
-        await saveAnswer({
+        const result = await saveAnswer({
           questionId: question.id,
           selectedAnswer: index,
           isCorrect,
           timeSpentSeconds: timeSpent,
           campo_medico: question.campo_medico,
           banca: question.banca,
+          idempotencyKey: idempotencyKeyRef.current,
+          sourceBucket,
+          sessionId,
         });
+
+        // Update daily usage count instantly using the authoritative count from the DB response
+        // (result is { today_count: number } for authenticated users)
+        if (result && 'today_count' in result && typeof result.today_count === 'number') {
+          incrementUsage(result.today_count);
+        }
       } catch (error) {
         console.error('Failed to save answer:', error);
+        // Don't unlock isSavingRef — the answer is shown, we don't want a retry
       }
+    } else {
+      // Guest user path
+      incrementUsage();
     }
 
     onAnswered(index, isCorrect);
-  };
+  }, [canAnswer, showResult, user, question, saveAnswer, onAnswered]);
 
   const handleSRSFeedback = async (confidence: ConfidenceLevel) => {
     if (user) {

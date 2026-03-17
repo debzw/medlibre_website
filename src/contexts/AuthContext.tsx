@@ -15,7 +15,7 @@ interface AuthContextType {
   canAnswerMore: () => boolean;
   getRemainingQuestions: () => number;
   getLimit: () => number;
-  incrementUsage: () => Promise<void>;
+  incrementUsage: (serverCount?: number) => Promise<void>;
   isFirstGuestInterstitial: boolean;
   markInterstitialAsShown: () => void;
   signInWithGoogle: () => Promise<{ error: any }>;
