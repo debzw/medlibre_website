@@ -65,9 +65,15 @@ export const metadata: Metadata = {
         },
     },
     icons: {
-        icon: '/logo.svg',
-        shortcut: '/logo.svg',
-        apple: '/logo.svg',
+        icon: [
+            { url: '/logo.svg', sizes: '16x16', type: 'image/svg+xml' },
+            { url: '/logo.svg', sizes: '32x32', type: 'image/svg+xml' },
+            { url: '/favicon-google.png', sizes: '48x48', type: 'image/png' },
+            { url: '/favicon-google.png', sizes: '96x96', type: 'image/png' },
+            { url: '/favicon-google.png', sizes: '144x144', type: 'image/png' },
+        ],
+        shortcut: '/favicon-google.png',
+        apple: '/favicon-google.png',
     },
 };
 
