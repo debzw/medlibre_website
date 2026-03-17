@@ -12,14 +12,16 @@ export const Footer = () => {
             <div className="container mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left mb-8">
                     <div className="space-y-4">
-                        <div className="flex items-center justify-center md:justify-start">
-                            <img src="/logo_withname.svg" alt="Medlibre" className="h-8 dark:hidden" />
-                            <img src="/logo_withname_white.svg" alt="Medlibre" className="h-8 hidden dark:block" />
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <img src="/logo_withname.svg" alt="Medlibre" className="h-8 dark:hidden" />
+                                <img src="/logo_withname_white.svg" alt="Medlibre" className="h-8 hidden dark:block" />
+                            </div>
                             <a
                                 href="https://www.instagram.com/medlibre.br/"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-muted-foreground hover:text-primary transition-colors ml-[200px]"
+                                className="text-muted-foreground hover:text-primary transition-colors"
                             >
                                 <InstagramIcon className="h-5 w-5" />
                             </a>
