@@ -134,7 +134,7 @@ export default function QuestionsPage() {
     }, [allQuestions, sharedQuestion, hideAnswered, checkIfAnswered, currentQuestionId, questionHistory, status]);
 
     const showInterstitialAds = (
-        (userType === 'guest' && AD_CONFIG.interstitial.enabledForGuest) ||
+        (userType === 'guest' && AD_CONFIG.interstitial.enabledForGuest && isFirstGuestInterstitial) ||
         (userType === 'free' && AD_CONFIG.interstitial.enabledForFree)
     ) && AD_CONFIG.enabled;
 
