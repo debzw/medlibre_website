@@ -13,7 +13,9 @@ import { useQuestions, useFilterOptions, useQuestionById } from '@/hooks/useQues
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuestionHistory } from '@/hooks/useQuestionHistory';
+import type { ConfidenceLevel } from '@/hooks/useQuestionHistory';
 import { Button } from '@/components/ui/button';
+import { MetacognitiveFeedback } from '@/components/MetacognitiveFeedback';
 import { ArrowRight, ArrowLeft, TrendingUp, Search, Loader2 } from 'lucide-react';
 import { QuestionTimer, QuestionTimerRef } from '@/components/QuestionTimer';
 import { useToast } from '@/hooks/use-toast';
@@ -84,7 +86,7 @@ export default function QuestionsPage() {
     const isSearchMode = !!(activeSearch && activeSearch.trim().length > 0);
 
     const { user, userType, canAnswerMore, getRemainingQuestions, isFirstGuestInterstitial, markInterstitialAsShown } = useAuthContext();
-    const { isQuestionAnswered: checkIfAnswered, getQuestionAttempts } = useQuestionHistory();
+    const { isQuestionAnswered: checkIfAnswered, getQuestionAttempts, saveSRSFeedback } = useQuestionHistory();
     const questionsAnsweredSinceAd = useRef(0);
     const timerRef = useRef<QuestionTimerRef>(null);
 
@@ -112,7 +114,7 @@ export default function QuestionsPage() {
                 p_questions_attempted: sessionQuestionsAttempted.current,
                 p_questions_correct: sessionQuestionsCorrect.current,
                 p_total_time_seconds: totalTime,
-            }).then(() => {}, (err: any) => console.warn('end_study_session:', err));
+            }).then(() => { }, (err: any) => console.warn('end_study_session:', err));
         };
     }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -180,6 +182,12 @@ export default function QuestionsPage() {
             questionsAnsweredSinceAd.current += 1;
             sessionQuestionsAttempted.current += 1;
             if (isCorrect) sessionQuestionsCorrect.current += 1;
+        }
+    };
+
+    const handleSRSFeedback = async (confidence: ConfidenceLevel) => {
+        if (user && currentQuestionId) {
+            await saveSRSFeedback({ questionId: currentQuestionId, confidence });
         }
     };
 
@@ -432,20 +440,25 @@ export default function QuestionsPage() {
                                 sourceBucket={questionBuckets[currentQuestion.id] ?? 'unknown'}
                                 sessionId={user ? sessionIdRef.current : undefined}
                             />
-                            <div className="flex justify-between items-center gap-4 animate-fade-in shadow-sm rounded-xl py-2">
+                            <div className="flex flex-row justify-between items-center gap-2 sm:gap-4 animate-fade-in py-2 w-full">
                                 {historyIndex > 0 ? (
                                     <Button
                                         size="default"
                                         variant="outline"
                                         onClick={handlePreviousQuestion}
-                                        className="flex-1 sm:flex-none gap-2 h-11"
+                                        className="w-auto h-11 rounded-full shrink-0 px-3 sm:px-4"
                                     >
-                                        <ArrowLeft className="w-4 h-4" />
+                                        <ArrowLeft className="w-4 h-4 sm:mr-2" />
                                         <span className="hidden sm:inline">Questão Anterior</span>
-                                        <span className="sm:hidden">Anterior</span>
                                     </Button>
                                 ) : (
-                                    <div className="hidden sm:block sm:flex-1" />
+                                    <div className="hidden sm:block sm:w-[150px] shrink-0" />
+                                )}
+
+                                {isQuestionAnswered && (
+                                    <div className="flex-1 flex justify-center w-full pb-1 lg:pb-0 relative z-10">
+                                        <MetacognitiveFeedback onFeedback={handleSRSFeedback} isLoggedIn={!!user} />
+                                    </div>
                                 )}
 
                                 <Button
@@ -453,17 +466,16 @@ export default function QuestionsPage() {
                                     variant={isQuestionAnswered ? "default" : "secondary"}
                                     onClick={handleNextClick}
                                     disabled={loadingMore}
-                                    className="flex-1 sm:flex-none gap-2 h-11"
+                                    className="w-auto h-11 rounded-full shrink-0 shadow-sm px-3 sm:px-4"
                                 >
                                     {loadingMore ? (
                                         <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            <span>Carregando...</span>
+                                            <Loader2 className="w-4 h-4 animate-spin sm:mr-2" />
+                                            <span className="hidden sm:inline">Carregando...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <span className="hidden sm:inline">{isQuestionAnswered ? "Próxima Questão" : "Pular Questão"}</span>
-                                            <span className="sm:hidden">{isQuestionAnswered ? "Próxima" : "Pular"}</span>
+                                            <span className="hidden sm:inline sm:mr-2">{isQuestionAnswered ? "Próxima Questão" : "Pular Questão"}</span>
                                             <ArrowRight className="w-4 h-4" />
                                         </>
                                     )}

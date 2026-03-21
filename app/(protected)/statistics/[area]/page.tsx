@@ -1,33 +1,45 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, use } from 'react';
+import { useRouter, notFound } from 'next/navigation';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useQuestionHistory, type TimeFilter } from '@/hooks/useQuestionHistory';
+import { useAreaStats } from '@/hooks/useAreaStats';
+import { type TimeFilter } from '@/hooks/useQuestionHistory';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, LayoutDashboard, MoreVertical, Flag } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ReportDialog } from '@/components/modals/ReportDialog';
 
-// New Components
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { DashboardKPIs } from '@/components/dashboard/DashboardKPIs';
 import { PerformanceHeatmap } from '@/components/dashboard/PerformanceHeatmap';
+import { AreaStatsTable } from '@/components/dashboard/AreaStatsTable';
 
-export default function StatisticsPage() {
+const AREA_MAP: Record<string, { label: string; dbValue: string }> = {
+    'clinica-medica': { label: 'Clínica Médica', dbValue: 'Clínica Médica' },
+    'cirurgia-geral': { label: 'Cirurgia Geral', dbValue: 'Cirurgia' },
+    'preventiva': { label: 'Preventiva', dbValue: 'Preventiva' },
+    'ginecologia-obstetricia': { label: 'Ginecologia e Obstetrícia', dbValue: 'Ginecologia e Obstetrícia' },
+    'pediatria': { label: 'Pediatria', dbValue: 'Pediatria' },
+};
+
+export default function AreaStatisticsPage({ params }: { params: Promise<{ area: string }> }) {
+    const { area } = use(params);
     const router = useRouter();
     const { user, loading: authLoading } = useAuthContext();
     const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
-    const { stats, isLoading } = useQuestionHistory(timeFilter);
-    const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
     const [heatmapMode, setHeatmapMode] = useState<'binary' | 'accuracy'>('binary');
+    const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+
+    const areaConfig = AREA_MAP[area];
+
+    const { stats, isLoading, isError } = useAreaStats(areaConfig?.dbValue ?? '', timeFilter);
+
+    // Unknown area slug → 404 (after hooks to comply with Rules of Hooks)
+    if (!areaConfig && !authLoading) {
+        notFound();
+    }
 
     if (!user && !authLoading) {
         return (
@@ -63,10 +75,10 @@ export default function StatisticsPage() {
     }
 
     const accuracy = stats.totalAnswered > 0 ? (stats.totalCorrect / stats.totalAnswered) * 100 : 0;
-    const timePerQ = stats.totalAnswered > 0 ? stats.averageTimeSeconds : 0;
-    const totalTime = stats.totalTimeSeconds ?? 0;
-    const totalQ = stats.totalAnswered ?? 0;
-    const correctQ = stats.totalCorrect ?? 0;
+    const timePerQ = stats.averageTimeSeconds;
+    const totalTime = stats.totalTimeSeconds;
+    const totalQ = stats.totalAnswered;
+    const correctQ = stats.totalCorrect;
 
     return (
         <div className="flex h-[calc(100vh-64px)] w-full bg-background text-foreground font-sans overflow-hidden transition-colors duration-300">
@@ -75,34 +87,38 @@ export default function StatisticsPage() {
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col p-6 sm:p-10 lg:pl-16 overflow-y-auto">
-                {/* Header Segment for Time Period */}
-                <header className="flex justify-center mb-6">
+                {/* Header: centered toggle with area name absolutely positioned to the left */}
+                <header className="flex justify-center mb-6 relative">
+                    <motion.h1
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 text-xl font-bold tracking-tight text-foreground"
+                    >
+                        {areaConfig?.label}
+                    </motion.h1>
                     <Tabs defaultValue="all" value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)}>
                         <TabsList className="bg-secondary/20 dark:bg-white/5 border border-border dark:border-white/10 p-1 rounded-full ring-0 shadow-sm h-auto flex gap-1">
-                            {/* HOJE */}
-                            <TabsTrigger 
-                                value="today" 
+                            <TabsTrigger
+                                value="today"
                                 className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/10 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[9px] sm:text-[11px] uppercase tracking-widest px-3 sm:px-5 py-1.5 transition-all"
                             >
                                 Hoje
                             </TabsTrigger>
-                            {/* SEMANA */}
-                            <TabsTrigger 
-                                value="week" 
+                            <TabsTrigger
+                                value="week"
                                 className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/10 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[9px] sm:text-[11px] uppercase tracking-widest px-3 sm:px-5 py-1.5 transition-all"
                             >
                                 Semana
                             </TabsTrigger>
-                            {/* MÊS */}
-                            <TabsTrigger 
-                                value="month" 
+                            <TabsTrigger
+                                value="month"
                                 className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/10 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[9px] sm:text-[11px] uppercase tracking-widest px-3 sm:px-5 py-1.5 transition-all"
                             >
                                 Mês
                             </TabsTrigger>
-                            {/* SEMPRE */}
-                            <TabsTrigger 
-                                value="all" 
+                            <TabsTrigger
+                                value="all"
                                 className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/20 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[9px] sm:text-[11px] uppercase tracking-widest px-3 sm:px-5 py-1.5 transition-all"
                             >
                                 Sempre
@@ -120,7 +136,6 @@ export default function StatisticsPage() {
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.3 }}
                         >
-                            {/* 3 Column KPIs */}
                             <DashboardKPIs
                                 accuracy={accuracy}
                                 totalTimeSeconds={totalTime}
@@ -133,18 +148,29 @@ export default function StatisticsPage() {
                         </motion.div>
                     </AnimatePresence>
 
-                    {/* Heatmap Area - Static, not affected by time filter */}
-                    <div className="mt-2 pl-2">
-                        <PerformanceHeatmap mode={heatmapMode} />
+                    {/* Heatmap filtered to this grande área */}
+                    <div className="mt-16 px-2">
+                        <PerformanceHeatmap mode={heatmapMode} areaFilter={areaConfig?.dbValue} />
+                    </div>
+
+                    {/* Area Specialties Stats Table */}
+                    <div className="mt-32 px-2 pb-16">
+                        {isError ? (
+                            <p className="text-xs text-destructive/70 text-center py-4">
+                                Erro ao carregar dados de especialidades.
+                            </p>
+                        ) : (
+                            <AreaStatsTable statsByField={stats.byField} isLoading={isLoading} />
+                        )}
                     </div>
                 </div>
-                
+
                 <ReportDialog
                     isOpen={isReportDialogOpen}
                     onClose={() => setIsReportDialogOpen(false)}
                     type="statistics"
-                    targetId="statistics_page"
-                    targetName="Página de Estatísticas"
+                    targetId={`statistics_${area}`}
+                    targetName={`Estatísticas — ${areaConfig?.label}`}
                 />
             </main>
         </div>

@@ -7,5 +7,9 @@
             "path": "/api/cron/cleanup-unconfirmed",
             "schedule": "*/5 * * * *"
         }
-    ]
+    ],
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "git": {
+        "deploymentEnabled": false
+    }
 }

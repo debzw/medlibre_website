@@ -6,7 +6,6 @@ import { Check, X, MoreVertical, Flag, Link } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuestionHistory } from '@/hooks/useQuestionHistory';
 import type { ConfidenceLevel } from '@/hooks/useQuestionHistory';
-import { MetacognitiveFeedback } from './MetacognitiveFeedback';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -313,9 +312,6 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry, so
               </p>
             </div>
           )}
-
-          {/* Feedback Metacognitivo – alimenta o algoritmo SRS */}
-          <MetacognitiveFeedback onFeedback={handleSRSFeedback} isLoggedIn={!!user} />
         </div>
       )}
 
