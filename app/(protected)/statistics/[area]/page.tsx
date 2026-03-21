@@ -26,7 +26,7 @@ const AREA_MAP: Record<string, { label: string; dbValue: string }> = {
 
 const PREVENTIVA_TAGS = new Set([
     'Bioestatística e Epidemiologia',
-    'Politicas de Saúde Pública e SUS',
+    'Políticas de Saúde Pública e SUS',
     'Bioética',
     'Medicina do Trabalho',
     'Medicina de Família e Comunidade',
@@ -163,7 +163,7 @@ export default function AreaStatisticsPage({ params }: { params: Promise<{ area:
                     </div>
 
                     {/* Area Specialties Stats Table */}
-                    <div className="mt-32 px-2 pb-16">
+                    <div className="mt-6 px-2 pb-16">
                         {isError ? (
                             <p className="text-xs text-destructive/70 text-center py-4">
                                 Erro ao carregar dados de especialidades.

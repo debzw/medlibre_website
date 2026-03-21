@@ -38,7 +38,7 @@ export function useAreaStats(grandeArea: string, timeFilter: TimeFilter = 'all')
 
             return data as unknown as UserStats;
         },
-        enabled: !!user,
+        enabled: !!user && !!grandeArea,
     });
 
     return { stats: stats ?? EMPTY_STATS, isLoading, isError };
