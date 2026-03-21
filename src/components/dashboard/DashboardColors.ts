@@ -20,3 +20,10 @@ export const getPerformanceStatus = (percentage: number): PerformanceStatus => {
     if (percentage >= 60) return 'gold';
     return 'critical';
 };
+
+export const getHeatmapColor = (percentage: number): string => {
+    if (percentage >= 80) return DASHBOARD_COLORS.good;
+    if (percentage >= 60) return DASHBOARD_COLORS.gold;
+    if (percentage >= 40) return DASHBOARD_COLORS.warning;
+    return DASHBOARD_COLORS.critical;
+};

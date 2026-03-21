@@ -30,4 +30,4 @@ build/
 *.sln
 *.sw?
 DECS_CLASSIFICATION.md
-
+database_prunning/
