@@ -18,9 +18,10 @@ interface SidebarItemProps {
     isSubItem?: boolean;
     collapsed: boolean;
     href?: string;
+    comingSoon?: boolean;
 }
 
-function SidebarItem({ icon: Icon, label, active, isSubItem, collapsed, href }: SidebarItemProps) {
+function SidebarItem({ icon: Icon, label, active, isSubItem, collapsed, href, comingSoon }: SidebarItemProps) {
     const inner = (
         <span
             className={cn(
@@ -31,7 +32,16 @@ function SidebarItem({ icon: Icon, label, active, isSubItem, collapsed, href }: 
             )}
         >
             {Icon && <Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-5 w-5 mr-3", active ? "text-primary" : "")} />}
-            {!collapsed && <span className="truncate">{label}</span>}
+            {!collapsed && (
+                <span className="flex items-center justify-between w-full min-w-0">
+                    <span className="truncate">{label}</span>
+                    {comingSoon && (
+                        <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-foreground/8 text-muted-foreground/60 dark:bg-white/8 dark:text-muted-foreground/50 border border-foreground/8 dark:border-white/10">
+                            Em breve
+                        </span>
+                    )}
+                </span>
+            )}
         </span>
     );
 
@@ -120,8 +130,8 @@ export function DashboardSidebar() {
                 </div>
 
                 <div className="flex flex-col space-y-1">
-                    <SidebarItem label="Flashcards" collapsed={collapsed} />
-                    <SidebarItem label="Caderno de Erros" collapsed={collapsed} />
+                    <SidebarItem label="Flashcards" collapsed={collapsed} comingSoon />
+                    <SidebarItem label="Caderno de Erros" collapsed={collapsed} comingSoon />
                 </div>
             </nav>
         </aside>

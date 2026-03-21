@@ -24,6 +24,15 @@ const AREA_MAP: Record<string, { label: string; dbValue: string }> = {
     'pediatria': { label: 'Pediatria', dbValue: 'Pediatria' },
 };
 
+const PREVENTIVA_TAGS = new Set([
+    'Bioestatística e Epidemiologia',
+    'Politicas de Saúde Pública e SUS',
+    'Bioética',
+    'Medicina do Trabalho',
+    'Medicina de Família e Comunidade',
+    'Medicina Legal',
+]);
+
 export default function AreaStatisticsPage({ params }: { params: Promise<{ area: string }> }) {
     const { area } = use(params);
     const router = useRouter();
@@ -149,7 +158,7 @@ export default function AreaStatisticsPage({ params }: { params: Promise<{ area:
                     </AnimatePresence>
 
                     {/* Heatmap filtered to this grande área */}
-                    <div className="mt-16 px-2">
+                    <div className="mt-2 px-2">
                         <PerformanceHeatmap mode={heatmapMode} areaFilter={areaConfig?.dbValue} />
                     </div>
 
@@ -160,7 +169,16 @@ export default function AreaStatisticsPage({ params }: { params: Promise<{ area:
                                 Erro ao carregar dados de especialidades.
                             </p>
                         ) : (
-                            <AreaStatsTable statsByField={stats.byField} isLoading={isLoading} />
+                            <AreaStatsTable
+                                statsByField={
+                                    area === 'preventiva'
+                                        ? Object.fromEntries(
+                                            Object.entries(stats.byField).filter(([k]) => PREVENTIVA_TAGS.has(k))
+                                          )
+                                        : stats.byField
+                                }
+                                isLoading={isLoading}
+                            />
                         )}
                     </div>
                 </div>
