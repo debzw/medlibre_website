@@ -19,7 +19,7 @@ export interface ProposedFix {
 export interface AIEvaluation {
   is_valid_error: boolean;
   ai_analysis: string;
-  proposed_fix: ProposedFix | null;
+  proposed_fix: ProposedFix[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,7 +190,7 @@ export async function evaluateReport(
   const validationEndpoint = buildEndpoint(project, location, VALIDATION_MODEL);
 
   const validationSystem = `Você é um revisor de questões médicas para residência médica brasileira.
-Avalie se o relatório do usuário descreve um erro real na questão.
+Avalie se o relatório do usuário descreve um erro na questão, não avalie se o erro está ou não correto, apenas se o usuário descreveu um erro.
 Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
 
   const validationMessage = `SCHEMA DE RESPOSTA:
@@ -229,17 +229,21 @@ DESCRIÇÃO DO USUÁRIO: ${reportDescription}`;
   const correctionEndpoint = buildEndpoint(project, location, CORRECTION_MODEL);
 
   const correctionSystem = `Você é um especialista em medicina e em qualidade de questões para residência médica brasileira.
-O relatório abaixo descreve um erro real confirmado. Proponha a correção mínima e precisa em UM ÚNICO campo da questão.
+O relatório abaixo descreve um erro na questão. Se for conceitual, verifique se a afirmação do usuário está correta, e se estiver reveja a explicação e gabarito. Se for de formatação refine o enunciado. Se não houver erro, não faça nenhuma alteração.         
 Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
 
   const correctionMessage = `SCHEMA DE RESPOSTA:
 {
-  "proposed_fix": {
-    "field": "enunciado|output_explicacao|output_gabarito|alternativa_a|alternativa_b|alternativa_c|alternativa_d|alternativa_e|resposta_correta",
-    "old_value": "texto atual exato do campo",
-    "new_value": "texto corrigido"
-  }
+  "proposed_fixes": [
+    {
+      "field": "enunciado|output_explicacao|output_gabarito|alternativa_a|alternativa_b|alternativa_c|alternativa_d|alternativa_e|resposta_correta",
+      "old_value": "texto atual exato do campo",
+      "new_value": "texto corrigido"
+    }
+  ]
 }
+
+IMPORTANTE: Se a resposta correta mudou, inclua OBRIGATORIAMENTE as três entradas em proposed_fixes: output_gabarito, resposta_correta e output_explicacao (com a explicação atualizada para a nova resposta).
 
 QUESTÃO:
 ${questionJson}
@@ -249,12 +253,19 @@ DESCRIÇÃO DO USUÁRIO: ${reportDescription}
 ANÁLISE PRÉVIA: ${aiAnalysis}`;
 
   try {
-    const rawCorrection = await callGemini(correctionEndpoint, accessToken, correctionSystem, correctionMessage, 1024);
-    const parsed = JSON.parse(rawCorrection) as { proposed_fix: ProposedFix };
+    const rawCorrection = await callGemini(correctionEndpoint, accessToken, correctionSystem, correctionMessage, 2048);
+    const parsed = JSON.parse(rawCorrection) as { proposed_fixes?: ProposedFix[]; proposed_fix?: ProposedFix };
+    // support both new array format and legacy single-fix format
+    const fixes: ProposedFix[] | null =
+      parsed.proposed_fixes?.length
+        ? parsed.proposed_fixes
+        : parsed.proposed_fix
+          ? [parsed.proposed_fix]
+          : null;
     return {
       is_valid_error: true,
       ai_analysis: aiAnalysis,
-      proposed_fix: parsed.proposed_fix ?? null,
+      proposed_fix: fixes,
     };
   } catch {
     // Correction failed but validation passed — return without fix

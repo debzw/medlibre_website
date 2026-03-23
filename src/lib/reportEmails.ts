@@ -115,7 +115,7 @@ export async function sendAdminReportEmail(
   const rejectUrl = `${SITE_URL}/api/reports/reject?token=${token}`;
 
   const questionHeader = `Questão #${question.numero ?? '?'} · ${question.banca} ${question.ano}`;
-  const fix = evaluation.proposed_fix as ProposedFix | null;
+  const fixes = evaluation.proposed_fix as ProposedFix[] | null;
 
   const bodyContent = `
     <h1 class="font-title" style="font-size:22px;font-weight:400;line-height:1.2;margin:0 0 6px 0;color:#212329;">
@@ -134,10 +134,10 @@ export async function sendAdminReportEmail(
     <p class="font-body" style="font-size:13px;font-weight:600;color:#293452;margin:0 0 8px 0;">Análise da IA</p>
     <p class="font-body" style="font-size:14px;color:#212329;line-height:1.6;margin:0 0 24px 0;">${escapeHtml(evaluation.ai_analysis)}</p>
 
-    ${fix ? `
+    ${fixes?.length ? `
     <hr style="border:none;border-top:1px solid #eef0f2;margin:0 0 24px 0;">
     <p class="font-body" style="font-size:13px;font-weight:600;color:#293452;margin:0 0 16px 0;">Correção proposta</p>
-    ${diffRow(getFieldLabel(fix.field), fix.old_value, fix.new_value)}
+    ${fixes.map((f) => diffRow(getFieldLabel(f.field), f.old_value, f.new_value)).join('')}
     <div style="margin-top:28px;">
       ${button(approveUrl, '✅ Aprovar correção', '#16a34a')}
       ${button(rejectUrl, '❌ Rejeitar', '#dc2626')}
@@ -167,11 +167,10 @@ export async function sendReporterThankYouEmail(
   reporterEmail: string,
   reporterName: string | null,
   question: Question,
-  fix: ProposedFix,
+  fixes: ProposedFix[],
 ): Promise<void> {
   const name = reporterName ?? 'Estudante';
   const questionRef = `#${question.numero ?? '?'} (${question.banca} ${question.ano})`;
-  const fieldLabel = getFieldLabel(fix.field);
 
   const bodyContent = `
     <h1 class="font-title" style="font-size:24px;font-weight:400;line-height:1.2;margin:0 0 24px 0;color:#212329;">
@@ -187,7 +186,7 @@ export async function sendReporterThankYouEmail(
     <hr style="border:none;border-top:1px solid #eef0f2;margin:0 0 24px 0;">
 
     <p class="font-body" style="font-size:13px;font-weight:600;color:#293452;margin:0 0 16px 0;">O que foi alterado</p>
-    ${diffRow(fieldLabel, fix.old_value, fix.new_value)}
+    ${fixes.map((f) => diffRow(getFieldLabel(f.field), f.old_value, f.new_value)).join('')}
 
     <p class="font-body" style="font-size:15px;line-height:1.6;color:#293452;margin-top:24px;">
       Sua contribuição torna o MedLibre melhor para toda a comunidade médica. Muito obrigado!

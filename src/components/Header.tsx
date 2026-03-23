@@ -1,15 +1,37 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { LogIn, LogOut, User, Crown, BarChart3, Info, Target, Sparkles } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ProfileCompletionModal } from '@/components/modals/ProfileCompletionModal';
+import type { UserProfile } from '@/types/database';
+
+const PROFILE_COMPLETION_FIELDS: (keyof UserProfile)[] = [
+  'full_name', 'locale', 'university', 'age', 'graduation_year', 'preferred_banca',
+];
+
+function isProfileIncomplete(profile: UserProfile | null): boolean {
+  if (!profile) return false;
+  return PROFILE_COMPLETION_FIELDS.some(f => profile[f] == null || profile[f] === '');
+}
 
 export function Header() {
   const { user, profile, signOut, userType, getRemainingQuestions } = useAuthContext();
   const pathname = usePathname();
+  const router = useRouter();
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  const handleAvatarClick = () => {
+    if (isProfileIncomplete(profile)) {
+      setProfileModalOpen(true);
+    } else {
+      router.push('/profile');
+    }
+  };
 
   // Hide header on landing page and pricing page
   if (pathname === '/' || pathname === '/pricing') {
@@ -88,18 +110,26 @@ export function Header() {
                 </div>
               )}
 
-              <Link href="/profile" className="hidden md:flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-4 h-4 text-muted-foreground" />
+              <button
+                onClick={handleAvatarClick}
+                className="hidden md:flex items-center gap-2 hover:opacity-80 transition-opacity"
+              >
+                <div className="relative w-8 h-8">
+                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  {isProfileIncomplete(profile) && (
+                    <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-background" />
                   )}
                 </div>
                 <span className="text-sm text-muted-foreground max-w-[150px] truncate">
                   {profile?.full_name || user.email}
                 </span>
-              </Link>
+              </button>
 
               {/* Mobile nav links */}
               <div className="flex md:hidden items-center gap-0.5 sm:gap-1">
@@ -166,6 +196,8 @@ export function Header() {
           )}
         </div>
       </div>
+
+      <ProfileCompletionModal open={profileModalOpen} onOpenChange={setProfileModalOpen} />
     </header>
   );
 }

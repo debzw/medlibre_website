@@ -78,9 +78,15 @@ export async function GET(request: NextRequest) {
     return htmlPage('Link expirado', 'Este link expirou. Os links são válidos por 7 dias.', '#dc2626');
   }
 
-  // ── Validate proposed_fix ─────────────────────────────────────────────────
-  const fix = approval.proposed_fix as ProposedFix | null;
-  if (!fix?.field || fix.new_value === undefined) {
+  // ── Validate proposed_fix (supports legacy single-object and new array) ────
+  const rawFix = approval.proposed_fix as ProposedFix | ProposedFix[] | null;
+  const fixes: ProposedFix[] | null = Array.isArray(rawFix)
+    ? rawFix
+    : rawFix?.field
+      ? [rawFix]
+      : null;
+
+  if (!fixes?.length) {
     return htmlPage(
       'Sem correção',
       'Este relatório não tinha uma correção proposta. Nenhuma alteração foi feita.',
@@ -88,15 +94,17 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // ── Apply fix to question ─────────────────────────────────────────────────
+  // ── Apply all fixes to question ───────────────────────────────────────────
   const questionId = (approval.reports as { target_id: string } | null)?.target_id;
   if (!questionId) {
     return htmlPage('Erro', 'Questão não encontrada. Nenhuma alteração foi feita.', '#dc2626');
   }
 
+  const updatePayload = Object.fromEntries(fixes.map((f) => [f.field, f.new_value]));
+
   const { error: updateErr } = await supabaseAdmin
     .from('questions')
-    .update({ [fix.field]: fix.new_value })
+    .update(updatePayload)
     .eq('id', questionId);
 
   if (updateErr) {
@@ -130,7 +138,7 @@ export async function GET(request: NextRequest) {
           approval.reporter_email as string,
           (approval.reporter_name as string | null) ?? null,
           question as unknown as Question,
-          fix,
+          fixes,
         );
       } catch (err) {
         console.error('[reports/approve] Failed to send thank-you email:', err);
