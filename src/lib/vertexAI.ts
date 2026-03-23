@@ -228,9 +228,13 @@ DESCRIÇÃO DO USUÁRIO: ${reportDescription}`;
   // ── Step 2: correction with capable model ────────────────────────────────
   const correctionEndpoint = buildEndpoint(project, location, CORRECTION_MODEL);
 
-  const correctionSystem = `Você é um especialista em medicina e em qualidade de questões para residência médica brasileira.
-A etapa anterior já confirmou que o relatório abaixo descreve um erro real na questão. Sua tarefa é propor a correção adequada — não questione se o erro existe, apenas gere o fix.
-Se o erro for conceitual (gabarito errado), aplique a mudança sugerida pelo usuário nos campos output_gabarito, resposta_correta e output_explicacao. Se for de formatação, corrija o enunciado ou alternativa afetada.
+  const correctionSystem = `Você é um assistente que estrutura correções de questões para revisão administrativa.
+A validação anterior confirmou que o relatório descreve um erro plausível. Sua única tarefa é formatar a correção indicada pelo usuário em JSON — NÃO avalie se a correção médica está certa ou errada, isso é responsabilidade do administrador que aprovará ou rejeitará a sugestão.
+
+Regras obrigatórias:
+1. Se o usuário indica que a resposta correta deveria ser outra alternativa, proponha SEMPRE os três campos: resposta_correta (só a letra, ex: "B"), output_gabarito (ex: "B - [texto da alternativa B]"), e output_explicacao (prefixe com "[REVISÃO NECESSÁRIA] " e adapte brevemente a explicação original para mencionar a nova alternativa).
+2. Se for erro de digitação ou formatação, corrija apenas o campo afetado.
+3. NUNCA retorne proposed_fixes vazio. Se não souber o texto exato do novo campo, use o texto da questão disponível e marque com "[REVISÃO NECESSÁRIA]".
 Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
 
   const correctionMessage = `SCHEMA DE RESPOSTA:
