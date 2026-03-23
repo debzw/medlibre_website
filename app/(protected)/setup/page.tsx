@@ -46,7 +46,7 @@ export default function FocusedSetupPage() {
         setSearchQuery
     } = useSmartFilters();
 
-    const { userType, profile } = useAuthContext();
+    const { userType, profile, user } = useAuthContext();
     const { toast } = useToast();
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -115,7 +115,7 @@ export default function FocusedSetupPage() {
                 tema: selectedTema
             };
 
-            const questions = await fetchQuestionsForExport(filters, count);
+            const questions = await fetchQuestionsForExport(filters, count, user!.id);
 
             if (questions.length === 0) {
                 toast({
@@ -281,7 +281,6 @@ export default function FocusedSetupPage() {
             <ExportPDFModal
                 open={isExportModalOpen}
                 onOpenChange={setIsExportModalOpen}
-                totalAvailable={totalFilteredQuestions}
                 onConfirm={handleConfirmExport}
                 isGenerating={isGeneratingPDF}
             />

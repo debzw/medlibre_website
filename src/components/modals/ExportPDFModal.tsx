@@ -18,7 +18,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 interface ExportPDFModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    totalAvailable: number;
     onConfirm: (count: number) => void;
     isGenerating: boolean;
 }
@@ -26,7 +25,6 @@ interface ExportPDFModalProps {
 export const ExportPDFModal = ({
     open,
     onOpenChange,
-    totalAvailable,
     onConfirm,
     isGenerating
 }: ExportPDFModalProps) => {
@@ -41,7 +39,7 @@ export const ExportPDFModal = ({
     const [count, setCount] = useState<string>("10");
     const [error, setError] = useState<string | null>(null);
 
-    const maxLimit = Math.min(30, totalAvailable);
+    const maxLimit = 30;
     const remainingPdfs = getRemainingPdfs();
     const limitReached = !canExportPdf();
 
@@ -109,9 +107,6 @@ export const ExportPDFModal = ({
                         />
                     </div>
                     <div className="space-y-1 ml-[25%] uppercase tracking-wider font-bold">
-                        <div className="text-[10px] text-muted-foreground">
-                            Questões disponíveis: {totalAvailable} (Máx: {maxLimit})
-                        </div>
                         {userType === 'paid' && (
                             <div className={`text-[10px] ${remainingPdfs <= 3 ? 'text-amber-500' : 'text-primary'}`}>
                                 PDFs restantes hoje: {remainingPdfs}

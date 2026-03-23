@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/types/database';
@@ -51,6 +51,8 @@ export function useAuth() {
 
   // IMPORTANTE: Em DEV_MODE, loading começa false para liberar a tela imediatamente
   const [loading, setLoading] = useState(!DEV_MODE);
+  // Guard: impede chamadas concorrentes a fetchProfile (React StrictMode + onAuthStateChange + getSession disparam várias ao mesmo tempo)
+  const isFetchingProfileRef = useRef(false);
 
   useEffect(() => {
     // dev mode is on, skip real auth handling
@@ -59,6 +61,8 @@ export function useAuth() {
       return;
     }
 
+    console.log(`[PERF] AUTH: start → ${performance.now().toFixed(0)}ms`);
+
     // dev mode is off, proceed with real auth handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -66,9 +70,7 @@ export function useAuth() {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id, session.user);
-          }, 0);
+          fetchProfile(session.user.id, session.user);
         } else {
           setProfile(null);
           setLoading(false);
@@ -77,12 +79,14 @@ export function useAuth() {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log(`[PERF] AUTH: getSession resolved → ${performance.now().toFixed(0)}ms | hasSession=${!!session}`);
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
         fetchProfile(session.user.id, session.user);
       } else {
+        console.log(`[PERF] AUTH: no session → loading=false @ ${performance.now().toFixed(0)}ms`);
         setLoading(false);
       }
     });
@@ -93,6 +97,15 @@ export function useAuth() {
   const fetchProfile = async (userId: string, sessionUser?: User) => {
     // Em modo DEV, ignoramos chamadas ao banco real para evitar erros 403/401
     if (DEV_MODE) return;
+    // Evita chamadas concorrentes: React StrictMode + onAuthStateChange + getSession disparam juntos
+    if (isFetchingProfileRef.current) {
+      console.log(`[PERF] AUTH: fetchProfile skipped (already in progress)`);
+      return;
+    }
+    isFetchingProfileRef.current = true;
+
+    const _tProfile = performance.now();
+    console.log(`[PERF] AUTH: fetchProfile started → ${_tProfile.toFixed(0)}ms`);
 
     // Usa sessionUser passado como parâmetro para evitar race condition com o state
     const currentUser = sessionUser ?? user;
@@ -160,6 +173,8 @@ export function useAuth() {
     } catch (err) {
       console.error('Error fetching profile:', err);
     } finally {
+      isFetchingProfileRef.current = false;
+      console.log(`[PERF] AUTH: fetchProfile done → ${performance.now().toFixed(0)}ms (profile query: ${(performance.now() - _tProfile).toFixed(0)}ms)`);
       setLoading(false);
     }
   };
@@ -172,7 +187,7 @@ export function useAuth() {
     if (DEV_MODE) { alert("Você está no modo DEV (Hardcoded). Edite o useAuth.ts para sair."); return { error: null }; }
     const { error } = await supabase.auth.signOut(); return { error };
   };
-  const refreshProfile = async () => { if (user) { await fetchProfile(user.id); } };
+  const refreshProfile = async () => { if (user) { isFetchingProfileRef.current = false; await fetchProfile(user.id); } };
 
   const updateThemePreference = async (theme: 'light' | 'dark') => {
     if (DEV_MODE) {

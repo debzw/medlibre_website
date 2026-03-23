@@ -18,6 +18,14 @@ export interface SearchMeta {
   layerUsed: number | null;
   correctedTerm: string | null;
   hasMore: boolean;
+  /** UUID do termo DeCS encontrado (layers 1/2); null se FTS (layer 3) */
+  decsId: string | null;
+  /** Nível de expansão hierárquica atual: 0=original, 1=irmãos, 2=tios... */
+  expansionLevel: number;
+  /** true se há mais níveis hierárquicos disponíveis para expandir */
+  canExpand: boolean;
+  /** Label do termo DeCS ancestral atual (ex: "Doenças Cardiovasculares") */
+  expansionLabel: string | null;
 }
 
 function parseQuestions(raw: any[]): Question[] {
@@ -57,8 +65,16 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
     layerUsed: null,
     correctedTerm: null,
     hasMore: false,
+    decsId: null,
+    expansionLevel: 0,
+    canExpand: false,
+    expansionLabel: null,
   });
   const [searchCursor, setSearchCursor] = useState<{ lastScore: number; lastId: string } | null>(null);
+  const [isPrefetching, setIsPrefetching] = useState(false);
+  // Ref para acessar searchMeta atual em callbacks sem stale closure
+  const searchMetaRef = useRef(searchMeta);
+  useEffect(() => { searchMetaRef.current = searchMeta; }, [searchMeta]);
 
   const isSearchMode = !!(filters.search && filters.search.trim().length > 0);
 
@@ -130,6 +146,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
       results: any[];
       layer_used: number;
       corrected_term: string | null;
+      decs_id: string | null;
       next_cursor: { last_score: number; last_id: string } | null;
     };
 
@@ -153,10 +170,16 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
       : null;
 
     setSearchCursor(nextCursor);
+    // Expansão hierárquica só disponível quando DeCS foi encontrado (layers 1 ou 2)
+    const canExpand = !!result.decs_id && result.layer_used !== 3;
     setSearchMeta({
       layerUsed: result.layer_used,
       correctedTerm: result.corrected_term ?? null,
       hasMore: !!nextCursor,
+      decsId: result.decs_id ?? null,
+      expansionLevel: 0,
+      canExpand,
+      expansionLabel: null,
     });
   }, [
     filters.search,
@@ -171,6 +194,10 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
   // ─── Primary fetch (resets state) ────────────────────────────────────────
   const fetchQuestions = async () => {
+    const _tFetch = performance.now();
+    const _fetchPath = user ? 'SRS-RPC' : 'guest';
+    console.log(`[PERF] QUESTIONS: fetchQuestions start (path=${_fetchPath}) → ${_tFetch.toFixed(0)}ms`);
+
     setLoading(true);
     setError(null);
 
@@ -192,6 +219,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
         // Try SRS RPC if user is logged in and no status filter
         if (user && !filters.status) {
+          console.log(`[PERF] QUESTIONS: RPC get_study_session_questions_v2 sent → ${performance.now().toFixed(0)}ms`);
           const { data: rpcData, error: rpcError } = await (supabase.rpc as any)('get_study_session_questions_v2', {
             p_user_id: user.id,
             p_limit: 20,
@@ -203,6 +231,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
             p_tema: filters.tema !== 'all' ? filters.tema : null
           });
 
+          console.log(`[PERF] QUESTIONS: RPC received → ${performance.now().toFixed(0)}ms | rows=${rpcData?.length ?? 0} | error=${rpcError?.message ?? 'none'}`);
           if (!rpcError) {
             // Build question→bucket map from the extra source_bucket column
             const buckets: Record<string, string> = {};
@@ -310,7 +339,9 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
         if (fetchError) {
           setError(fetchError.message);
         } else {
-          setQuestions(parseQuestions(data || []));
+          const parsed = parseQuestions(data || []);
+          console.log(`[PERF] QUESTIONS: parseQuestions done → ${performance.now().toFixed(0)}ms | count=${parsed.length}`);
+          setQuestions(parsed);
           setSearchMeta({ layerUsed: null, correctedTerm: null, hasMore: false });
         }
 
@@ -325,6 +356,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
         break;
       }
     }
+    console.log(`[PERF] QUESTIONS: loading=false → ${performance.now().toFixed(0)}ms`);
     setLoading(false);
   };
 
@@ -342,14 +374,97 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
     }
   }, [isSearchMode, searchMeta.hasMore, loadingMore, searchCursor, runSearchRpc]);
 
+  // ─── Expand search hierarchically (DeCS tree climbing) ───────────────────
+  // Busca questões no nível hierárquico imediatamente acima do termo atual.
+  // Aceita { silent: true } para pre-fetch em background (não bloqueia botão).
+  const expandSearch = useCallback(async (opts: { silent?: boolean } = {}) => {
+    const meta = searchMetaRef.current;
+    if (!meta.decsId || !meta.canExpand) return;
+    if (!opts.silent && loadingMore) return;
+    if (opts.silent && isPrefetching) return;
+
+    const nextLevel = meta.expansionLevel + 1;
+    if (opts.silent) {
+      setIsPrefetching(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const { data: rpcResult, error: rpcError } = await (supabase.rpc as any)(
+        'search_questions_expand',
+        {
+          p_decs_id:        meta.decsId,
+          p_expansion_level: nextLevel,
+          p_banca:          filters.banca && filters.banca !== 'all' ? filters.banca : null,
+          p_ano:            filters.ano && filters.ano !== 0 ? filters.ano : null,
+          p_campo:          filters.campo_medico && filters.campo_medico !== 'all' ? filters.campo_medico : null,
+          p_especialidade:  filters.especialidade && filters.especialidade !== 'all' ? filters.especialidade : null,
+          p_tema:           filters.tema && filters.tema !== 'all' ? filters.tema : null,
+          p_user_id:        user?.id ?? null,
+          p_hide_answered:  user ? (filters.hideAnswered ?? false) : false,
+          p_last_score:     null,
+          p_last_id:        null,
+          p_limit:          20,
+        }
+      );
+
+      if (rpcError) throw new Error(rpcError.message);
+
+      const result = rpcResult as {
+        results: any[];
+        expansion_level: number;
+        expansion_label: string | null;
+        can_expand_more: boolean;
+        next_cursor: { last_score: number; last_id: string } | null;
+      };
+
+      const parsed = parseQuestions(result.results || []);
+      setQuestions(prev => [...prev, ...parsed]);
+
+      const nextCursor = result.next_cursor
+        ? { lastScore: result.next_cursor.last_score, lastId: result.next_cursor.last_id }
+        : null;
+      setSearchCursor(nextCursor);
+
+      setSearchMeta(prev => ({
+        ...prev,
+        hasMore: !!nextCursor,
+        expansionLevel: nextLevel,
+        canExpand: result.can_expand_more,
+        expansionLabel: result.expansion_label,
+      }));
+    } catch {
+      if (!opts.silent) setError('Erro ao expandir busca');
+    } finally {
+      if (opts.silent) {
+        setIsPrefetching(false);
+      } else {
+        setLoadingMore(false);
+      }
+    }
+  }, [
+    filters.banca,
+    filters.ano,
+    filters.campo_medico,
+    filters.especialidade,
+    filters.tema,
+    filters.hideAnswered,
+    user,
+    loadingMore,
+    isPrefetching,
+  ]);
+
   return {
     questions,
     questionBuckets,
     loading,
     loadingMore,
+    isPrefetching,
     error,
     searchMeta,
     loadMore,
+    expandSearch,
     refetch: fetchQuestions,
   };
 }

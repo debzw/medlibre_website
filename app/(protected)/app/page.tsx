@@ -67,9 +67,11 @@ export default function QuestionsPage() {
         questionBuckets,
         loading: questionsLoading,
         loadingMore,
+        isPrefetching,
         error: questionsError,
         searchMeta,
         loadMore,
+        expandSearch,
         refetch,
     } = useQuestions({
         banca: selectedBanca,
@@ -120,6 +122,21 @@ export default function QuestionsPage() {
 
     const { toast } = useToast();
 
+    // ── Pre-fetch silencioso: quando restam 3 questões no batch, carrega o próximo lote ──
+    // Garante que o usuário nunca espere: as questões chegam antes do fim do batch atual.
+    useEffect(() => {
+        if (!isSearchMode) return;
+        const remaining = allQuestions.length - 1 - (allQuestions.findIndex(q => q.id === currentQuestionId));
+        if (remaining !== 2) return;
+        if (isPrefetching || loadingMore) return;
+
+        if (searchMeta.hasMore) {
+            loadMore();
+        } else if (searchMeta.canExpand) {
+            expandSearch({ silent: true });
+        }
+    }, [currentQuestionId, allQuestions.length, isSearchMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const questions = useMemo(() => {
         let base = allQuestions;
         if (sharedQuestion && !base.some(q => q.id === sharedQuestion.id)) {
@@ -152,6 +169,7 @@ export default function QuestionsPage() {
     useEffect(() => {
         // Case 1: Initial load or reset - No ID selected
         if (!currentQuestionId && questions.length > 0 && historyIndex === -1) {
+            console.log(`[PERF] PAGE: first question selected → ${performance.now().toFixed(0)}ms since page load`);
             const firstId = questions[0].id;
             setCurrentQuestionId(firstId);
             setQuestionHistory([firstId]);
@@ -237,12 +255,24 @@ export default function QuestionsPage() {
             setHistoryIndex(-1);
 
             if (isSearchMode && searchMeta.hasMore) {
-                // Search mode: load next page via keyset pagination
-                loadMore();
-                toast({
-                    title: "Carregando mais resultados",
-                    description: "Buscando próximas questões relevantes...",
-                });
+                // Paginar no nível atual (pre-fetch já pode ter sido disparado)
+                if (!isPrefetching) {
+                    loadMore();
+                    toast({ title: "Carregando mais resultados", description: "Buscando próximas questões relevantes..." });
+                }
+                // Se isPrefetching = true, as questões chegam em breve — sem toast
+            } else if (isSearchMode && searchMeta.canExpand) {
+                // Escalar hierarquia DeCS (pre-fetch já pode ter sido disparado)
+                if (!isPrefetching) {
+                    expandSearch({ silent: false });
+                    toast({
+                        title: "Expandindo busca",
+                        description: searchMeta.expansionLabel
+                            ? `Buscando em: ${searchMeta.expansionLabel}`
+                            : "Buscando em termos relacionados...",
+                    });
+                }
+                // Se isPrefetching = true, as questões chegam em breve — sem toast
             } else {
                 refetch();
                 toast({
@@ -322,7 +352,7 @@ export default function QuestionsPage() {
                         )}
                     </div>
 
-                    {/* Search context banner */}
+                    {/* Search context banner — correção ortográfica */}
                     {isSearchMode && searchMeta.layerUsed === 2 && searchMeta.correctedTerm && searchMeta.correctedTerm.toLowerCase() !== activeSearch?.toLowerCase() && (
                         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/5 border border-primary/15 text-sm text-muted-foreground animate-fade-in">
                             <Search className="h-4 w-4 text-primary shrink-0" />
@@ -331,6 +361,17 @@ export default function QuestionsPage() {
                                 <span className="font-semibold text-foreground">{searchMeta.correctedTerm}</span>
                                 {' '}(corrigido de{' '}
                                 <span className="italic">{activeSearch}</span>)
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Search context banner — expansão hierárquica DeCS */}
+                    {isSearchMode && searchMeta.expansionLevel > 0 && searchMeta.expansionLabel && (
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary/50 border border-border text-sm text-muted-foreground animate-fade-in">
+                            <TrendingUp className="h-4 w-4 shrink-0" />
+                            <span>
+                                Expandido para:{' '}
+                                <span className="font-semibold text-foreground">{searchMeta.expansionLabel}</span>
                             </span>
                         </div>
                     )}
