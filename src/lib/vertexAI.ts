@@ -190,7 +190,7 @@ export async function evaluateReport(
   const validationEndpoint = buildEndpoint(project, location, VALIDATION_MODEL);
 
   const validationSystem = `Você é um revisor de questões médicas para residência médica brasileira.
-Avalie se o relatório do usuário descreve um erro na questão, não avalie se o erro está ou não correto, apenas se o usuário descreveu um erro.
+Avalie se o relatório do usuário descreve um erro plausível e específico na questão (ex: gabarito trocado, erro de digitação, explicação incorreta). Marque is_valid_error=true se o relato aponta para um problema real e identificável — mesmo que você não tenha certeza absoluta sobre o conteúdo médico. Marque false apenas para relatos vagos, irrelevantes ou que claramente não descrevem um erro.
 Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
 
   const validationMessage = `SCHEMA DE RESPOSTA:
@@ -229,7 +229,8 @@ DESCRIÇÃO DO USUÁRIO: ${reportDescription}`;
   const correctionEndpoint = buildEndpoint(project, location, CORRECTION_MODEL);
 
   const correctionSystem = `Você é um especialista em medicina e em qualidade de questões para residência médica brasileira.
-O relatório abaixo descreve um erro na questão. Se for conceitual, verifique se a afirmação do usuário está correta, e se estiver reveja a explicação e gabarito. Se for de formatação refine o enunciado. Se não houver erro, não faça nenhuma alteração.         
+A etapa anterior já confirmou que o relatório abaixo descreve um erro real na questão. Sua tarefa é propor a correção adequada — não questione se o erro existe, apenas gere o fix.
+Se o erro for conceitual (gabarito errado), aplique a mudança sugerida pelo usuário nos campos output_gabarito, resposta_correta e output_explicacao. Se for de formatação, corrija o enunciado ou alternativa afetada.
 Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
 
   const correctionMessage = `SCHEMA DE RESPOSTA:
