@@ -163,7 +163,7 @@ export default function AreaStatisticsPage({ params }: { params: Promise<{ area:
                     </div>
 
                     {/* Area Specialties Stats Table */}
-                    <div className="mt-6 px-2 pb-16">
+                    <div className="mt-10 px-2 pb-16">
                         {isError ? (
                             <p className="text-xs text-destructive/70 text-center py-4">
                                 Erro ao carregar dados de especialidades.
