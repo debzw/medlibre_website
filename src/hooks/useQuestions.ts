@@ -342,7 +342,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           const parsed = parseQuestions(data || []);
           console.log(`[PERF] QUESTIONS: parseQuestions done → ${performance.now().toFixed(0)}ms | count=${parsed.length}`);
           setQuestions(parsed);
-          setSearchMeta({ layerUsed: null, correctedTerm: null, hasMore: false });
+          setSearchMeta({ layerUsed: null, correctedTerm: null, hasMore: false, decsId: null, expansionLevel: 0, canExpand: false, expansionLabel: null });
         }
 
         break; // Sucesso ou erro definitivo
