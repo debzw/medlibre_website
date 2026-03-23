@@ -105,6 +105,44 @@ function escapeHtml(str: string): string {
 // Admin notification email
 // ---------------------------------------------------------------------------
 
+const LETTER = ['A', 'B', 'C', 'D', 'E'];
+
+function questionBlock(question: Question): string {
+  const correctLetter = LETTER[question.resposta_correta] ?? '?';
+  const alts = (['a', 'b', 'c', 'd', 'e'] as const)
+    .map((l) => {
+      const text = question[`alternativa_${l}` as keyof Question] as string | null;
+      if (!text) return '';
+      const letter = l.toUpperCase();
+      const isCorrect = letter === correctLetter;
+      return `<tr>
+        <td style="padding:6px 0;font-size:13px;font-family:'Lexend Deca','Segoe UI',sans-serif;color:${isCorrect ? '#15803d' : '#212329'};">
+          <strong>${letter}.</strong> ${escapeHtml(text)}${isCorrect ? ' ✓' : ''}
+        </td>
+      </tr>`;
+    })
+    .join('');
+
+  return `
+    <table width="100%" style="border-collapse:collapse;margin-bottom:0;">
+      <tr><td style="padding:8px 0 4px 0;">
+        <span style="font-size:11px;font-weight:600;color:#9ca3af;font-family:'Lexend Deca','Segoe UI',sans-serif;text-transform:uppercase;letter-spacing:0.05em;">
+          ID: ${escapeHtml(question.id)}
+        </span>
+      </td></tr>
+      <tr><td style="padding:0 0 14px 0;font-size:14px;line-height:1.6;color:#212329;font-family:'Lexend Deca','Segoe UI',sans-serif;">
+        ${escapeHtml(question.enunciado)}
+      </td></tr>
+      ${alts}
+      ${question.output_gabarito ? `<tr><td style="padding:10px 0 0 0;font-size:12px;color:#9ca3af;font-family:'Lexend Deca','Segoe UI',sans-serif;">
+        <strong>Gabarito:</strong> ${escapeHtml(question.output_gabarito)}
+      </td></tr>` : ''}
+      ${question.output_explicacao ? `<tr><td style="padding:6px 0 0 0;font-size:12px;color:#6b7280;font-family:'Lexend Deca','Segoe UI',sans-serif;line-height:1.5;">
+        <strong>Explicação:</strong> ${escapeHtml(question.output_explicacao)}
+      </td></tr>` : ''}
+    </table>`;
+}
+
 export async function sendAdminReportEmail(
   report: Report,
   question: Question,
@@ -131,8 +169,15 @@ export async function sendAdminReportEmail(
 
     <hr style="border:none;border-top:1px solid #eef0f2;margin:0 0 24px 0;">
 
+    <p class="font-body" style="font-size:13px;font-weight:600;color:#293452;margin:0 0 8px 0;">Questão completa</p>
+    <div style="background:#f8f9fa;border-radius:10px;padding:16px 20px;margin-bottom:24px;">
+      ${questionBlock(question)}
+    </div>
+
+    ${evaluation.ai_analysis ? `
     <p class="font-body" style="font-size:13px;font-weight:600;color:#293452;margin:0 0 8px 0;">Análise da IA</p>
     <p class="font-body" style="font-size:14px;color:#212329;line-height:1.6;margin:0 0 24px 0;">${escapeHtml(evaluation.ai_analysis)}</p>
+    ` : ''}
 
     ${fixes?.length ? `
     <hr style="border:none;border-top:1px solid #eef0f2;margin:0 0 24px 0;">

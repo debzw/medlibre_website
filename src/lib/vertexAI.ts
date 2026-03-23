@@ -98,8 +98,7 @@ async function getAccessToken(serviceAccountJson: string): Promise<string> {
 // Step 2 — gemini-3.0 (o3):       generate the correction if valid
 // ---------------------------------------------------------------------------
 
-const VALIDATION_MODEL = 'gemini-2.5-flash-lite';
-const CORRECTION_MODEL = 'gemini-2.5-flash'; // o3 model on Vertex AI
+const CORRECTION_MODEL = 'gemini-2.5-flash';
 
 const FIELD_LABELS: Record<ProposedFix['field'], string> = {
   enunciado: 'Enunciado',
@@ -186,59 +185,21 @@ export async function evaluateReport(
   const reportCategory = report.category;
   const reportDescription = report.description ?? '(sem descrição)';
 
-  // ── Step 1: validation with fast model ──────────────────────────────────
-  const validationEndpoint = buildEndpoint(project, location, VALIDATION_MODEL);
-
-  const validationSystem = `Você é um revisor de questões médicas para residência médica brasileira.
-Avalie se o relatório do usuário descreve um erro plausível e específico na questão (ex: gabarito trocado, erro de digitação, explicação incorreta). Marque is_valid_error=true se o relato aponta para um problema real e identificável — mesmo que você não tenha certeza absoluta sobre o conteúdo médico. Marque false apenas para relatos vagos, irrelevantes ou que claramente não descrevem um erro.
-Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
-
-  const validationMessage = `SCHEMA DE RESPOSTA:
-{
-  "is_valid_error": boolean,
-  "ai_analysis": "string em pt-BR, 2-3 frases explicando sua avaliação"
-}
-
-QUESTÃO:
-${questionJson}
-
-CATEGORIA DO REPORT: ${reportCategory}
-DESCRIÇÃO DO USUÁRIO: ${reportDescription}`;
-
-  let isValidError = false;
-  let aiAnalysis = '';
-
-  try {
-    const rawValidation = await callGemini(validationEndpoint, accessToken, validationSystem, validationMessage, 512);
-    const parsed = JSON.parse(rawValidation) as { is_valid_error: boolean; ai_analysis: string };
-    isValidError = Boolean(parsed.is_valid_error);
-    aiAnalysis = String(parsed.ai_analysis ?? '');
-  } catch {
-    return {
-      is_valid_error: false,
-      ai_analysis: 'Erro ao validar o relatório. Avaliação manual recomendada.',
-      proposed_fix: null,
-    };
-  }
-
-  if (!isValidError) {
-    return { is_valid_error: false, ai_analysis: aiAnalysis, proposed_fix: null };
-  }
-
-  // ── Step 2: correction with capable model ────────────────────────────────
+  // ── Single step: propose correction directly (admin reviews and approves/rejects) ──
   const correctionEndpoint = buildEndpoint(project, location, CORRECTION_MODEL);
 
-  const correctionSystem = `Você é um assistente que estrutura correções de questões para revisão administrativa.
-A validação anterior confirmou que o relatório descreve um erro plausível. Sua única tarefa é formatar a correção indicada pelo usuário em JSON — NÃO avalie se a correção médica está certa ou errada, isso é responsabilidade do administrador que aprovará ou rejeitará a sugestão.
+  const correctionSystem = `Você é um assistente que estrutura correções de questões médicas para revisão administrativa.
+Sua tarefa é formatar a correção indicada pelo usuário em JSON. NÃO avalie se a correção médica está certa ou errada — isso é responsabilidade do administrador que aprovará ou rejeitará a sugestão.
 
 Regras obrigatórias:
-1. Se o usuário indica que a resposta correta deveria ser outra alternativa, proponha SEMPRE os três campos: resposta_correta (só a letra, ex: "B"), output_gabarito (ex: "B - [texto da alternativa B]"), e output_explicacao (prefixe com "[REVISÃO NECESSÁRIA] " e adapte brevemente a explicação original para mencionar a nova alternativa).
+1. Se o usuário indica que a resposta correta deveria ser outra alternativa, proponha SEMPRE os três campos: resposta_correta (só a letra, ex: "B"), output_gabarito (ex: "B - [texto da alternativa B]"), e output_explicacao (prefixe com "[REVISÃO NECESSÁRIA] " e adapte brevemente a explicação original para indicar a nova alternativa).
 2. Se for erro de digitação ou formatação, corrija apenas o campo afetado.
-3. NUNCA retorne proposed_fixes vazio. Se não souber o texto exato do novo campo, use o texto da questão disponível e marque com "[REVISÃO NECESSÁRIA]".
+3. NUNCA retorne proposed_fixes vazio. Se não souber o texto exato do novo campo, use o conteúdo da questão disponível e marque com "[REVISÃO NECESSÁRIA]".
 Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
 
   const correctionMessage = `SCHEMA DE RESPOSTA:
 {
+  "ai_analysis": "string em pt-BR, 1-2 frases resumindo o que foi reportado e o que está sendo proposto",
   "proposed_fixes": [
     {
       "field": "enunciado|output_explicacao|output_gabarito|alternativa_a|alternativa_b|alternativa_c|alternativa_d|alternativa_e|resposta_correta",
@@ -248,19 +209,17 @@ Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem mar
   ]
 }
 
-IMPORTANTE: Se a resposta correta mudou, inclua OBRIGATORIAMENTE as três entradas em proposed_fixes: output_gabarito, resposta_correta e output_explicacao (com a explicação atualizada para a nova resposta).
+IMPORTANTE: Se a resposta correta mudou, inclua OBRIGATORIAMENTE as três entradas em proposed_fixes: output_gabarito, resposta_correta e output_explicacao.
 
 QUESTÃO:
 ${questionJson}
 
 CATEGORIA DO REPORT: ${reportCategory}
-DESCRIÇÃO DO USUÁRIO: ${reportDescription}
-ANÁLISE PRÉVIA: ${aiAnalysis}`;
+DESCRIÇÃO DO USUÁRIO: ${reportDescription}`;
 
   try {
     const rawCorrection = await callGemini(correctionEndpoint, accessToken, correctionSystem, correctionMessage, 2048);
-    const parsed = JSON.parse(rawCorrection) as { proposed_fixes?: ProposedFix[]; proposed_fix?: ProposedFix };
-    // support both new array format and legacy single-fix format
+    const parsed = JSON.parse(rawCorrection) as { ai_analysis?: string; proposed_fixes?: ProposedFix[]; proposed_fix?: ProposedFix };
     const fixes: ProposedFix[] | null =
       parsed.proposed_fixes?.length
         ? parsed.proposed_fixes
@@ -269,14 +228,13 @@ ANÁLISE PRÉVIA: ${aiAnalysis}`;
           : null;
     return {
       is_valid_error: true,
-      ai_analysis: aiAnalysis,
+      ai_analysis: String(parsed.ai_analysis ?? ''),
       proposed_fix: fixes,
     };
   } catch {
-    // Correction failed but validation passed — return without fix
     return {
       is_valid_error: true,
-      ai_analysis: aiAnalysis,
+      ai_analysis: 'Erro ao processar correção. Revisão manual necessária.',
       proposed_fix: null,
     };
   }
