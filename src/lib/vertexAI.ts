@@ -122,6 +122,12 @@ export async function evaluateReport(
   const model = 'gemini-2.0-flash-001';
 
   if (!serviceAccountJson || !project) {
+    console.error('[vertexAI] Missing env vars:', {
+      hasCredentials: !!serviceAccountJson,
+      credentialsLength: serviceAccountJson?.length ?? 0,
+      hasProject: !!project,
+      project,
+    });
     throw new Error('[vertexAI] Missing GOOGLE_APPLICATION_CREDENTIALS_JSON or GOOGLE_VERTEX_PROJECT');
   }
 
