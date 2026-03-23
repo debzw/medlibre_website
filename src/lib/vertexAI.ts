@@ -3,15 +3,15 @@ import type { Report } from '@/integrations/supabase/types';
 
 export interface ProposedFix {
   field:
-    | 'enunciado'
-    | 'output_explicacao'
-    | 'output_gabarito'
-    | 'alternativa_a'
-    | 'alternativa_b'
-    | 'alternativa_c'
-    | 'alternativa_d'
-    | 'alternativa_e'
-    | 'resposta_correta';
+  | 'enunciado'
+  | 'output_explicacao'
+  | 'output_gabarito'
+  | 'alternativa_a'
+  | 'alternativa_b'
+  | 'alternativa_c'
+  | 'alternativa_d'
+  | 'alternativa_e'
+  | 'resposta_correta';
   old_value: string;
   new_value: string;
 }
@@ -93,8 +93,13 @@ async function getAccessToken(serviceAccountJson: string): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// Evaluate a report against the full question using Gemini on Vertex AI
+// Evaluate a report against the full question using Vertex AI (two-step)
+// Step 1 — gemini-2.5-flash-lite: check if the report is a valid error
+// Step 2 — gemini-3.0 (o3):       generate the correction if valid
 // ---------------------------------------------------------------------------
+
+const VALIDATION_MODEL = 'gemini-2.5-flash-lite';
+const CORRECTION_MODEL = 'gemini-2.5-flash'; // o3 model on Vertex AI
 
 const FIELD_LABELS: Record<ProposedFix['field'], string> = {
   enunciado: 'Enunciado',
@@ -112,59 +117,26 @@ export function getFieldLabel(field: ProposedFix['field']): string {
   return FIELD_LABELS[field] ?? field;
 }
 
-export async function evaluateReport(
-  question: Question,
-  report: Report,
-): Promise<AIEvaluation> {
-  const serviceAccountJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-  const project = process.env.GOOGLE_VERTEX_PROJECT;
-  const location = process.env.GOOGLE_VERTEX_LOCATION ?? 'us-central1';
-  const model = 'gemini-2.0-flash-001';
-
-  if (!serviceAccountJson || !project) {
-    console.error('[vertexAI] Missing env vars:', {
-      hasCredentials: !!serviceAccountJson,
-      credentialsLength: serviceAccountJson?.length ?? 0,
-      hasProject: !!project,
-      project,
-    });
-    throw new Error('[vertexAI] Missing GOOGLE_APPLICATION_CREDENTIALS_JSON or GOOGLE_VERTEX_PROJECT');
-  }
-
-  const accessToken = await getAccessToken(serviceAccountJson);
-
-  const endpoint =
+function buildEndpoint(project: string, location: string, model: string): string {
+  return (
     `https://${location}-aiplatform.googleapis.com/v1/projects/${project}` +
-    `/locations/${location}/publishers/google/models/${model}:generateContent`;
-
-  const systemInstruction = `Você é um revisor de qualidade de questões médicas para uma plataforma brasileira de residência médica.
-Avalie se o relatório do usuário identifica um erro real no texto da questão.
-Se sim, proponha uma correção mínima de texto em UM ÚNICO campo.
-Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
-
-  const userMessage = `SCHEMA DE RESPOSTA:
-{
-  "is_valid_error": boolean,
-  "ai_analysis": "string em pt-BR, 2-3 frases explicando sua avaliação",
-  "proposed_fix": {
-    "field": "enunciado|output_explicacao|output_gabarito|alternativa_a|alternativa_b|alternativa_c|alternativa_d|alternativa_e|resposta_correta",
-    "old_value": "texto atual",
-    "new_value": "texto corrigido"
-  } | null
+    `/locations/${location}/publishers/google/models/${model}:generateContent`
+  );
 }
 
-QUESTÃO:
-${JSON.stringify(question, null, 2)}
-
-CATEGORIA DO REPORT: ${report.category}
-DESCRIÇÃO DO USUÁRIO: ${report.description ?? '(sem descrição)'}`;
-
+async function callGemini(
+  endpoint: string,
+  accessToken: string,
+  systemInstruction: string,
+  userMessage: string,
+  maxOutputTokens: number,
+): Promise<string> {
   const body = {
     contents: [{ role: 'user', parts: [{ text: userMessage }] }],
     systemInstruction: { parts: [{ text: systemInstruction }] },
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 1024,
+      maxOutputTokens,
       responseMimeType: 'application/json',
     },
   };
@@ -180,28 +152,115 @@ DESCRIÇÃO DO USUÁRIO: ${report.description ?? '(sem descrição)'}`;
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`[vertexAI] Gemini request failed (${res.status}): ${text}`);
+    throw new Error(`[vertexAI] Request to ${endpoint} failed (${res.status}): ${text}`);
   }
 
   const data = await res.json() as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
   };
 
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+}
+
+export async function evaluateReport(
+  question: Question,
+  report: Report,
+): Promise<AIEvaluation> {
+  const serviceAccountJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+  const project = process.env.GOOGLE_VERTEX_PROJECT;
+  const location = process.env.GOOGLE_VERTEX_LOCATION ?? 'us-central1';
+
+  if (!serviceAccountJson || !project) {
+    console.error('[vertexAI] Missing env vars:', {
+      hasCredentials: !!serviceAccountJson,
+      credentialsLength: serviceAccountJson?.length ?? 0,
+      hasProject: !!project,
+      project,
+    });
+    throw new Error('[vertexAI] Missing GOOGLE_APPLICATION_CREDENTIALS_JSON or GOOGLE_VERTEX_PROJECT');
+  }
+
+  const accessToken = await getAccessToken(serviceAccountJson);
+
+  const questionJson = JSON.stringify(question, null, 2);
+  const reportCategory = report.category;
+  const reportDescription = report.description ?? '(sem descrição)';
+
+  // ── Step 1: validation with fast model ──────────────────────────────────
+  const validationEndpoint = buildEndpoint(project, location, VALIDATION_MODEL);
+
+  const validationSystem = `Você é um revisor de questões médicas para residência médica brasileira.
+Avalie se o relatório do usuário descreve um erro real na questão.
+Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
+
+  const validationMessage = `SCHEMA DE RESPOSTA:
+{
+  "is_valid_error": boolean,
+  "ai_analysis": "string em pt-BR, 2-3 frases explicando sua avaliação"
+}
+
+QUESTÃO:
+${questionJson}
+
+CATEGORIA DO REPORT: ${reportCategory}
+DESCRIÇÃO DO USUÁRIO: ${reportDescription}`;
+
+  let isValidError = false;
+  let aiAnalysis = '';
 
   try {
-    const parsed = JSON.parse(rawText) as AIEvaluation;
-    return {
-      is_valid_error: Boolean(parsed.is_valid_error),
-      ai_analysis: String(parsed.ai_analysis ?? ''),
-      proposed_fix: parsed.is_valid_error && parsed.proposed_fix
-        ? parsed.proposed_fix
-        : null,
-    };
+    const rawValidation = await callGemini(validationEndpoint, accessToken, validationSystem, validationMessage, 512);
+    const parsed = JSON.parse(rawValidation) as { is_valid_error: boolean; ai_analysis: string };
+    isValidError = Boolean(parsed.is_valid_error);
+    aiAnalysis = String(parsed.ai_analysis ?? '');
   } catch {
     return {
       is_valid_error: false,
-      ai_analysis: 'Erro ao processar resposta da IA. Avaliação manual recomendada.',
+      ai_analysis: 'Erro ao validar o relatório. Avaliação manual recomendada.',
+      proposed_fix: null,
+    };
+  }
+
+  if (!isValidError) {
+    return { is_valid_error: false, ai_analysis: aiAnalysis, proposed_fix: null };
+  }
+
+  // ── Step 2: correction with capable model ────────────────────────────────
+  const correctionEndpoint = buildEndpoint(project, location, CORRECTION_MODEL);
+
+  const correctionSystem = `Você é um especialista em medicina e em qualidade de questões para residência médica brasileira.
+O relatório abaixo descreve um erro real confirmado. Proponha a correção mínima e precisa em UM ÚNICO campo da questão.
+Responda APENAS com JSON válido seguindo exatamente o schema fornecido, sem markdown, sem texto adicional.`;
+
+  const correctionMessage = `SCHEMA DE RESPOSTA:
+{
+  "proposed_fix": {
+    "field": "enunciado|output_explicacao|output_gabarito|alternativa_a|alternativa_b|alternativa_c|alternativa_d|alternativa_e|resposta_correta",
+    "old_value": "texto atual exato do campo",
+    "new_value": "texto corrigido"
+  }
+}
+
+QUESTÃO:
+${questionJson}
+
+CATEGORIA DO REPORT: ${reportCategory}
+DESCRIÇÃO DO USUÁRIO: ${reportDescription}
+ANÁLISE PRÉVIA: ${aiAnalysis}`;
+
+  try {
+    const rawCorrection = await callGemini(correctionEndpoint, accessToken, correctionSystem, correctionMessage, 1024);
+    const parsed = JSON.parse(rawCorrection) as { proposed_fix: ProposedFix };
+    return {
+      is_valid_error: true,
+      ai_analysis: aiAnalysis,
+      proposed_fix: parsed.proposed_fix ?? null,
+    };
+  } catch {
+    // Correction failed but validation passed — return without fix
+    return {
+      is_valid_error: true,
+      ai_analysis: aiAnalysis,
       proposed_fix: null,
     };
   }
