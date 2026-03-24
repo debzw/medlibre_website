@@ -107,8 +107,6 @@ export default function QuestionsPage() {
             p_session_type: 'study',
         }).then(({ error }) => {
             if (error) console.warn('start_study_session:', error.message);
-        }).catch((err: unknown) => {
-            console.warn('start_study_session threw:', err);
         });
 
         return () => {
