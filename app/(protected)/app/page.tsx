@@ -175,8 +175,10 @@ export default function QuestionsPage() {
             setQuestionHistory([firstId]);
             setHistoryIndex(0);
         }
-        // Case 2: Stale ID - Selected ID is not in the current list
-        else if (currentQuestionId && questions.length > 0) {
+        // Case 2: Stale ID - Selected ID is not in the current list.
+        // Guard: only reset when NOT loading, to avoid evicting a valid SRS question
+        // while a new fetch is still in-flight (race condition on mobile).
+        else if (currentQuestionId && questions.length > 0 && !questionsLoading) {
             const isCurrentIdValid = questions.some(q => q.id === currentQuestionId);
             if (!isCurrentIdValid) {
                 console.log("⚠️ Stale ID detected, resetting to first available question");
@@ -186,7 +188,7 @@ export default function QuestionsPage() {
                 setHistoryIndex(0);
             }
         }
-    }, [currentQuestionId, questions, historyIndex]);
+    }, [currentQuestionId, questions, historyIndex, questionsLoading]);
 
     const historyEntry = currentQuestionId ? getQuestionAttempts(currentQuestionId)?.[0] : undefined;
     const isQuestionAnswered = !!historyEntry || recentlyAnsweredId === currentQuestionId;

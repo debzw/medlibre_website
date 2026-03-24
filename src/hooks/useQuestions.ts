@@ -78,6 +78,10 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
   const isSearchMode = !!(filters.search && filters.search.trim().length > 0);
 
+  // Fetch-generation counter: each new fetch increments this.
+  // Any in-flight fetch that was superseded will see its generation != current and discard results.
+  const fetchGenerationRef = useRef(0);
+
   // Track previous authLoading to detect the transition from loading→resolved.
   const prevAuthLoadingRef = useRef(authLoading);
 
@@ -93,7 +97,9 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
     setSearchCursor(null);
     setQuestions([]);
-    fetchQuestions();
+    fetchGenerationRef.current += 1;
+    const gen = fetchGenerationRef.current;
+    fetchQuestions(gen);
   }, [
     filters.banca,
     filters.ano,
@@ -193,7 +199,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
   ]);
 
   // ─── Primary fetch (resets state) ────────────────────────────────────────
-  const fetchQuestions = async () => {
+  const fetchQuestions = async (generation: number) => {
     const _tFetch = performance.now();
     const _fetchPath = user ? 'SRS-RPC' : 'guest';
     console.log(`[PERF] QUESTIONS: fetchQuestions start (path=${_fetchPath}) → ${_tFetch.toFixed(0)}ms`);
@@ -209,6 +215,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
       try {
         if (isSearchMode) {
           await runSearchRpc(null, false);
+          if (generation !== fetchGenerationRef.current) return; // stale fetch — discard
           break;
         }
 
@@ -233,6 +240,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
           console.log(`[PERF] QUESTIONS: RPC received → ${performance.now().toFixed(0)}ms | rows=${rpcData?.length ?? 0} | error=${rpcError?.message ?? 'none'}`);
           if (!rpcError) {
+            if (generation !== fetchGenerationRef.current) return; // stale fetch — discard
             // Build question→bucket map from the extra source_bucket column
             const buckets: Record<string, string> = {};
             (rpcData as any[] || []).forEach((row: any) => {
@@ -336,6 +344,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           }
         }
 
+        if (generation !== fetchGenerationRef.current) return; // stale fetch — discard
         if (fetchError) {
           setError(fetchError.message);
         } else {
@@ -352,10 +361,12 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           await delay(500 * attempt);
           continue;
         }
+        if (generation !== fetchGenerationRef.current) return; // stale fetch — discard
         setError('Erro ao carregar questões');
         break;
       }
     }
+    if (generation !== fetchGenerationRef.current) return; // stale fetch — discard
     console.log(`[PERF] QUESTIONS: loading=false → ${performance.now().toFixed(0)}ms`);
     setLoading(false);
   };
@@ -465,7 +476,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
     searchMeta,
     loadMore,
     expandSearch,
-    refetch: fetchQuestions,
+    refetch: () => { fetchGenerationRef.current += 1; fetchQuestions(fetchGenerationRef.current); },
   };
 }
 
