@@ -31,3 +31,4 @@ build/
 *.sw?
 DECS_CLASSIFICATION.md
 database_prunning/
+.vercel
