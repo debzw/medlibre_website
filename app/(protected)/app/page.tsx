@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FilterBar } from '@/components/FilterBar';
 import { QuestionCard } from '@/components/QuestionCard';
@@ -107,6 +107,8 @@ export default function QuestionsPage() {
             p_session_type: 'study',
         }).then(({ error }) => {
             if (error) console.warn('start_study_session:', error.message);
+        }).catch((err: unknown) => {
+            console.warn('start_study_session threw:', err);
         });
 
         return () => {
@@ -205,7 +207,11 @@ export default function QuestionsPage() {
 
     const handleSRSFeedback = async (confidence: ConfidenceLevel) => {
         if (user && currentQuestionId) {
-            await saveSRSFeedback({ questionId: currentQuestionId, confidence });
+            try {
+                await saveSRSFeedback({ questionId: currentQuestionId, confidence });
+            } catch (err: unknown) {
+                console.warn('saveSRSFeedback failed:', err);
+            }
         }
     };
 
@@ -282,6 +288,15 @@ export default function QuestionsPage() {
             }
         }
     };
+
+    const handleHideAnsweredChange = useCallback((v: boolean) => {
+        if (userType === 'guest') {
+            router.push('/pricing');
+            return;
+        }
+        setHideAnswered(v);
+        resetFilters();
+    }, [userType, router]);
 
     const handleAdClose = () => {
         markInterstitialAsShown();
@@ -398,14 +413,7 @@ export default function QuestionsPage() {
                             updateSearchParams('campo', v);
                             resetFilters();
                         }}
-                        onHideAnsweredChange={(v) => {
-                            if (userType === 'guest') {
-                                router.push('/pricing');
-                                return;
-                            }
-                            setHideAnswered(v);
-                            resetFilters();
-                        }}
+                        onHideAnsweredChange={handleHideAnsweredChange}
                         loading={optionsLoading}
                     />
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { getHeatmapColor, DASHBOARD_COLORS } from './DashboardColors';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { usePerformanceHeatmap } from '@/hooks/usePerformanceHeatmap';
 import { usePerformanceHeatmapByArea } from '@/hooks/usePerformanceHeatmapByArea';
 
@@ -29,6 +29,15 @@ export function PerformanceHeatmap({ mode = 'binary', areaFilter }: PerformanceH
     const byArea = usePerformanceHeatmapByArea(areaFilter ?? '', TOTAL_DAYS);
     const { data, isLoading } = areaFilter ? byArea : global;
     const [tooltip, setTooltip] = useState<{ x: number; y: number; label: string } | null>(null);
+    const prefersReducedMotion = useReducedMotion();
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // On mobile, always show the most recent columns (scroll to right end after load)
+    useEffect(() => {
+        if (!isLoading && scrollRef.current) {
+            scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+        }
+    }, [isLoading]);
 
     // O(1) lookup: YYYY-MM-DD → accuracy
     const accuracyMap = useMemo(() => {
@@ -99,7 +108,8 @@ export function PerformanceHeatmap({ mode = 'binary', areaFilter }: PerformanceH
                 </div>
 
                 {/* Heatmap grid — scrollable, flows column-by-column so rows = days of week */}
-                <div className="overflow-x-auto scrollbar-none">
+                {/* max-w caps to 8 cols on mobile (8×30px); sm+ shows all 20 */}
+                <div ref={scrollRef} className="overflow-x-auto scrollbar-none max-w-[240px] sm:max-w-none">
                     <div
                         className="grid gap-[2px] pt-4 pb-0"
                         style={{
@@ -128,16 +138,23 @@ export function PerformanceHeatmap({ mode = 'binary', areaFilter }: PerformanceH
                                     : (cell.isEmpty ? emptyColor : getHeatmapColor(cell.accuracy));
                                 const col = Math.floor(i / rows);
 
+                                const cellLabel = !isBinary && !cell.isEmpty ? `${cell.dateLabel} · ${cell.accuracy}%` : cell.dateLabel;
                                 return (
                                     <motion.div
                                         key={`${i}-${mode}`}
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        transition={{ delay: col * 0.02 }}
+                                        initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.8 }}
+                                        animate={prefersReducedMotion ? {} : { opacity: 1, scale: 1 }}
+                                        transition={prefersReducedMotion ? {} : { delay: col * 0.02 }}
                                         data-date={cell.isoDate}
                                         data-accuracy={cell.isEmpty ? undefined : cell.accuracy}
-                                        onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, label: !isBinary && !cell.isEmpty ? `${cell.dateLabel} · ${cell.accuracy}%` : cell.dateLabel })}
+                                        onMouseMove={(e) => setTooltip({ x: e.clientX, y: e.clientY, label: cellLabel })}
                                         onMouseLeave={() => setTooltip(null)}
+                                        onTouchStart={(e) => {
+                                            e.preventDefault();
+                                            const touch = e.touches[0];
+                                            setTooltip({ x: touch.clientX, y: touch.clientY, label: cellLabel });
+                                        }}
+                                        onTouchEnd={() => setTimeout(() => setTooltip(null), 1200)}
                                         className="w-[28px] h-[28px] sm:w-[32px] sm:h-[32px] rounded-md sm:rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-heading transition-transform hover:scale-110 z-10 hover:z-20 cursor-default shadow-sm"
                                         style={{
                                             backgroundColor: bgColor,

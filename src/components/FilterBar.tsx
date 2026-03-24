@@ -17,7 +17,7 @@ interface FilterBarProps {
   loading?: boolean;
 }
 
-export function FilterBar({
+export const FilterBar = React.memo(function FilterBar({
   hideAnswered,
   onHideAnsweredChange,
 }: FilterBarProps) {
@@ -59,4 +59,4 @@ export function FilterBar({
       </div>
     </div>
   );
-}
+});

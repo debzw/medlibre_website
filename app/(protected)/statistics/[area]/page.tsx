@@ -96,13 +96,13 @@ export default function AreaStatisticsPage({ params }: { params: Promise<{ area:
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col p-6 sm:p-10 lg:pl-16 overflow-y-auto">
-                {/* Header: centered toggle with area name absolutely positioned to the left */}
-                <header className="flex justify-center mb-6 relative">
+                {/* Header: centered toggle with area name above on mobile, left-absolute on sm+ */}
+                <header className="flex flex-col sm:flex-row items-center justify-center mb-6 gap-2 sm:relative">
                     <motion.h1
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 text-xl font-bold tracking-tight text-foreground"
+                        className="sm:absolute sm:left-0 sm:top-1/2 sm:-translate-y-1/2 text-xl font-bold tracking-tight text-foreground"
                     >
                         {areaConfig?.label}
                     </motion.h1>
@@ -163,7 +163,13 @@ export default function AreaStatisticsPage({ params }: { params: Promise<{ area:
                     </div>
 
                     {/* Area Specialties Stats Table */}
-                    <div className="mt-10 px-2 pb-16">
+                    <div className="mt-24 px-2 pb-16">
+                        <div className="flex items-center gap-3 mb-5">
+                            <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/60 whitespace-nowrap">
+                                Desempenho por especialidade
+                            </span>
+                            <div className="flex-1 h-px bg-border/40" />
+                        </div>
                         {isError ? (
                             <p className="text-xs text-destructive/70 text-center py-4">
                                 Erro ao carregar dados de especialidades.

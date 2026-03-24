@@ -13,6 +13,7 @@ import {
 
 interface SidebarItemProps {
     icon?: React.ElementType;
+    initials?: string;
     label: string;
     active?: boolean;
     isSubItem?: boolean;
@@ -21,7 +22,7 @@ interface SidebarItemProps {
     comingSoon?: boolean;
 }
 
-function SidebarItem({ icon: Icon, label, active, isSubItem, collapsed, href, comingSoon }: SidebarItemProps) {
+function SidebarItem({ icon: Icon, initials, label, active, isSubItem, collapsed, href, comingSoon }: SidebarItemProps) {
     const inner = (
         <span
             className={cn(
@@ -31,7 +32,10 @@ function SidebarItem({ icon: Icon, label, active, isSubItem, collapsed, href, co
                 isSubItem && !collapsed ? "pl-10" : ""
             )}
         >
-            {Icon && <Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-5 w-5 mr-3", active ? "text-primary" : "")} />}
+            {collapsed && initials
+                ? <span className="text-muted-foreground font-bold text-[11px] leading-none tracking-tight">{initials}</span>
+                : Icon && <Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-5 w-5 mr-3", active ? "text-primary" : "")} />
+            }
             {!collapsed && (
                 <span className="flex items-center justify-between w-full min-w-0">
                     <span className="truncate">{label}</span>
@@ -53,11 +57,11 @@ function SidebarItem({ icon: Icon, label, active, isSubItem, collapsed, href, co
 }
 
 const GRANDE_AREAS = [
-    { label: 'Clínica Médica',           slug: 'clinica-medica' },
-    { label: 'Cirurgia Geral',            slug: 'cirurgia-geral' },
-    { label: 'Preventiva',               slug: 'preventiva' },
-    { label: 'Ginecologia e Obstetrícia', slug: 'ginecologia-obstetricia' },
-    { label: 'Pediatria',                slug: 'pediatria' },
+    { label: 'Clínica Médica',           slug: 'clinica-medica',           initials: 'CM'   },
+    { label: 'Cirurgia Geral',            slug: 'cirurgia-geral',           initials: 'CG'   },
+    { label: 'Preventiva',               slug: 'preventiva',               initials: 'Prev' },
+    { label: 'Ginecologia e Obstetrícia', slug: 'ginecologia-obstetricia',  initials: 'GO'   },
+    { label: 'Pediatria',                slug: 'pediatria',                initials: 'Ped'  },
 ];
 
 export function DashboardSidebar() {
@@ -110,10 +114,11 @@ export function DashboardSidebar() {
                 </div>
 
                 <div className="flex flex-col space-y-1">
-                    {GRANDE_AREAS.map(({ label, slug }) => (
+                    {GRANDE_AREAS.map(({ label, slug, initials }) => (
                         <SidebarItem
                             key={slug}
                             label={label}
+                            initials={initials}
                             collapsed={collapsed}
                             isSubItem
                             href={`/statistics/${slug}`}

@@ -39,7 +39,11 @@ export function Header() {
   }
 
   const handleSignOut = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (err: unknown) {
+      console.warn('signOut threw:', err);
+    }
   };
 
   const remaining = getRemainingQuestions();

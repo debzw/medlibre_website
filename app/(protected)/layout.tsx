@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { BetaWelcomeModal } from "@/components/modals/BetaWelcomeModal";
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Routes accessible without authentication (guest mode supported)
 const GUEST_ALLOWED_ROUTES = ['/app', '/setup'];
@@ -31,7 +32,9 @@ export default function ProtectedLayout({
     return (
         <>
             <BetaWelcomeModal />
-            {children}
+            <ErrorBoundary>
+                {children}
+            </ErrorBoundary>
         </>
     );
 }

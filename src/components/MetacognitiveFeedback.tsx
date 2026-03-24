@@ -72,6 +72,7 @@ interface MetacognitiveFeedbackProps {
 export function MetacognitiveFeedback({ onFeedback, isLoggedIn = false }: MetacognitiveFeedbackProps) {
   const [selected, setSelected] = useState<ConfidenceLevel | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hoveredValue, setHoveredValue] = useState<number | string | null>(null);
 
   const handleSelect = async (confidence: ConfidenceLevel) => {
     if (selected !== null || isSubmitting) return;
@@ -98,12 +99,12 @@ export function MetacognitiveFeedback({ onFeedback, isLoggedIn = false }: Metaco
             const isDimmed = selected !== null && !isSelected;
 
             return (
-              <div key={value} className="relative group">
+              <div key={value} className="relative" onPointerEnter={() => setHoveredValue(value)} onPointerLeave={() => setHoveredValue(null)}>
                 <button
                   onClick={() => handleSelect(value)}
                   disabled={selected !== null || isSubmitting}
                   className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ease-out hover:bg-white/10 shrink-0",
+                    "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ease-out hover:bg-white/10 active:bg-white/15 active:scale-95 shrink-0",
                     isDimmed && "opacity-40",
                     isSelected && "opacity-100"
                   )}
@@ -115,13 +116,16 @@ export function MetacognitiveFeedback({ onFeedback, isLoggedIn = false }: Metaco
                     )}
                     style={{
                       backgroundColor: color,
-                      borderColor: color, // For border color we use same to match user intent from mock
+                      borderColor: color,
                       borderWidth: '1px'
                     }}
                   />
                 </button>
                 {/* Apple-style Tooltip */}
-                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-1 group-hover:translate-y-0 transition-all duration-200 z-[100] flex flex-col items-center bg-[#2c2c2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl pointer-events-none">
+                <div className={cn(
+                  "absolute bottom-full mb-2 left-1/2 -translate-x-1/2 transition-all duration-200 z-[100] flex flex-col items-center bg-[#2c2c2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl pointer-events-none",
+                  hoveredValue === value ? "opacity-100 visible translate-y-0" : "opacity-0 invisible translate-y-1"
+                )}>
                   <span className="text-[11px] font-semibold tracking-tight whitespace-nowrap" style={{ color: color }}>
                     {label}
                   </span>
@@ -138,22 +142,28 @@ export function MetacognitiveFeedback({ onFeedback, isLoggedIn = false }: Metaco
         {/* Right Side: Tools (Icons) */}
         <div className="flex items-center gap-1 sm:gap-1.5">
           {/* Caderno de Erros */}
-          <div className="relative group">
-            <button className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-200 focus:outline-none shrink-0">
+          <div className="relative" onPointerEnter={() => setHoveredValue('caderno')} onPointerLeave={() => setHoveredValue(null)}>
+            <button className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:bg-white/15 active:scale-95 transition-all duration-200 focus:outline-none shrink-0">
               <BookX className="w-4 h-4 stroke-[1.5px]" />
             </button>
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-1 group-hover:translate-y-0 transition-all duration-200 z-[100] flex flex-col items-center bg-[#2c2c2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl pointer-events-none">
+            <div className={cn(
+              "absolute bottom-full mb-2 left-1/2 -translate-x-1/2 transition-all duration-200 z-[100] flex flex-col items-center bg-[#2c2c2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl pointer-events-none",
+              hoveredValue === 'caderno' ? "opacity-100 visible translate-y-0" : "opacity-0 invisible translate-y-1"
+            )}>
               <span className="text-white text-[11px] font-medium whitespace-nowrap">Caderno de erros</span>
               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#2c2c2e] border-r border-b border-white/10 rotate-45"></div>
             </div>
           </div>
 
           {/* Flashcards */}
-          <div className="relative group">
-            <button className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-200 focus:outline-none shrink-0">
+          <div className="relative" onPointerEnter={() => setHoveredValue('flashcards')} onPointerLeave={() => setHoveredValue(null)}>
+            <button className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 active:bg-white/15 active:scale-95 transition-all duration-200 focus:outline-none shrink-0">
               <StackedCardsIcon className="w-4 h-4" />
             </button>
-            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-1 group-hover:translate-y-0 transition-all duration-200 z-[100] flex flex-col items-center bg-[#2c2c2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl pointer-events-none">
+            <div className={cn(
+              "absolute bottom-full mb-2 left-1/2 -translate-x-1/2 transition-all duration-200 z-[100] flex flex-col items-center bg-[#2c2c2e] border border-white/10 rounded-lg px-2.5 py-1.5 shadow-xl pointer-events-none",
+              hoveredValue === 'flashcards' ? "opacity-100 visible translate-y-0" : "opacity-0 invisible translate-y-1"
+            )}>
               <span className="text-white text-[11px] font-medium whitespace-nowrap">Flashcards</span>
               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#2c2c2e] border-r border-b border-white/10 rotate-45"></div>
             </div>

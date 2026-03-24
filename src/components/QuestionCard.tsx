@@ -17,6 +17,9 @@ import { AdBanner } from './AdBanner';
 import { ReportDialog } from './modals/ReportDialog';
 import { toast } from '@/components/ui/sonner';
 
+const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E'];
+const OPTION_IMAGE_KEYS: (keyof Question)[] = ['imagem_alt_a', 'imagem_alt_b', 'imagem_alt_c', 'imagem_alt_d', 'imagem_alt_e'];
+
 interface QuestionCardProps {
   question: Question;
   onAnswered: (selectedAnswer: number, isCorrect: boolean) => void;
@@ -146,9 +149,6 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry, so
     return null;
   };
 
-  const optionLabels = ['A', 'B', 'C', 'D', 'E'];
-  const optionImageKeys: (keyof Question)[] = ['imagem_alt_a', 'imagem_alt_b', 'imagem_alt_c', 'imagem_alt_d', 'imagem_alt_e'];
-
   // Check if texto_base is substantially different from enunciado
   const showTextoBase = question.texto_base &&
     question.texto_base.trim() !== "" &&
@@ -257,21 +257,22 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry, so
               <div className="flex flex-col gap-3">
                 <div className="flex items-start gap-2 sm:gap-3">
                   <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary flex items-center justify-center text-xs sm:text-sm font-semibold shrink-0">
-                    {optionLabels[index]}
+                    {OPTION_LABELS[index]}
                   </span>
                   <span className="text-left flex-1 pt-0.5 sm:pt-1 text-sm sm:text-base">{opcao}</span>
                   {getOptionIcon(index)}
                 </div>
 
                 {/* Alternative Image if present */}
-                {question[optionImageKeys[index]] && (
+                {question[OPTION_IMAGE_KEYS[index]] && (
                   <div className="ml-9 sm:ml-11 rounded-lg overflow-hidden border border-border/50 bg-white/5 max-w-xs">
                     <img
-                      src={question[optionImageKeys[index]] as string}
-                      alt={`Imagem alternativa ${optionLabels[index]}`}
+                      src={question[OPTION_IMAGE_KEYS[index]] as string}
+                      alt={`Imagem alternativa ${OPTION_LABELS[index]}`}
                       className="w-full h-auto object-contain max-h-40"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).parentElement!.style.display = 'none';
+                        const parent = (e.target as HTMLImageElement).parentElement;
+                        if (parent) parent.style.display = 'none';
                       }}
                     />
                   </div>
@@ -296,7 +297,7 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry, so
             <p className="font-medium">
               {selectedOption === question.resposta_correta
                 ? '✓ Resposta correta!'
-                : `✗ Resposta incorreta. A alternativa correta é: ${optionLabels[question.resposta_correta]}`}
+                : `✗ Resposta incorreta. A alternativa correta é: ${OPTION_LABELS[question.resposta_correta]}`}
             </p>
           </div>
 
