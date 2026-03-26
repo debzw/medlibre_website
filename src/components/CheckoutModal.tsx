@@ -61,7 +61,7 @@ export function CheckoutModal({
   couponCode,
   finalPriceCents,
 }: CheckoutModalProps) {
-  const { session } = useAuthContext()
+  const { session, loading: authLoading } = useAuthContext()
   const router = useRouter()
 
   const [method, setMethod] = useState<PaymentMethod>('PIX')
@@ -81,11 +81,11 @@ export function CheckoutModal({
 
   // Redirect to login if not authenticated when modal opens
   useEffect(() => {
-    if (open && !session) {
+    if (open && !authLoading && !session) {
       onClose()
       router.push('/auth?redirect=/pricing')
     }
-  }, [open, session, onClose, router])
+  }, [open, authLoading, session, onClose, router])
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
