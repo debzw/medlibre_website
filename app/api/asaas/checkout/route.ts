@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Dados obrigatórios ausentes.' }, { status: 400 })
   }
 
+  if (paymentMethod === 'BOLETO') {
+    return NextResponse.json({ error: 'Boleto não disponível.' }, { status: 400 })
+  }
+
   if (!PLAN_PRICES[plan]) {
     return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
   }

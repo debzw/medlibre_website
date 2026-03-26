@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -16,7 +17,6 @@ import { cn } from '@/lib/utils'
 import {
   CreditCard,
   QrCode,
-  FileText,
   CheckCircle2,
   Loader2,
   AlertCircle,
@@ -37,8 +37,8 @@ interface CheckoutModalProps {
   finalPriceCents: number
 }
 
-type PaymentMethod = 'CREDIT_CARD' | 'PIX' | 'BOLETO'
-type Step = 'form' | 'pix_pending' | 'boleto_pending' | 'success'
+type PaymentMethod = 'CREDIT_CARD' | 'PIX'
+type Step = 'form' | 'pix_pending' | 'success'
 
 const PLAN_LABEL: Record<CheckoutPlan, string> = {
   monthly: 'Mensal — Sem Compromisso',
@@ -62,6 +62,7 @@ export function CheckoutModal({
   finalPriceCents,
 }: CheckoutModalProps) {
   const { session } = useAuthContext()
+  const router = useRouter()
   const [method, setMethod] = useState<PaymentMethod>('PIX')
   const [step, setStep] = useState<Step>('form')
   const [submitting, setSubmitting] = useState(false)
@@ -72,17 +73,10 @@ export function CheckoutModal({
   const [pixCopiaECola, setPixCopiaECola] = useState<string | null>(null)
   const [pixCopied, setPixCopied] = useState(false)
 
-  // Boleto state
-  const [boletoUrl, setBoletoUrl] = useState<string | null>(null)
-
-  // Form fields
+  // Form fields (shared for PIX + card page redirect)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [cpf, setCpf] = useState('')
-  const [cardNumber, setCardNumber] = useState('')
-  const [cardExpiry, setCardExpiry] = useState('')
-  const [cardCvv, setCardCvv] = useState('')
-  const [cardHolder, setCardHolder] = useState('')
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -94,7 +88,7 @@ export function CheckoutModal({
     let attempts = 0
     pollRef.current = setInterval(async () => {
       attempts++
-      if (attempts > 60) { stopPoll(); return } // 5 min max
+      if (attempts > 60) { stopPoll(); return }
       try {
         const res = await fetch('/api/asaas/subscription', {
           headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
@@ -111,11 +105,25 @@ export function CheckoutModal({
   const handleSubmit = useCallback(async () => {
     if (submitting) return
     setError(null)
+
+    // Card → redirect to dedicated page
+    if (method === 'CREDIT_CARD') {
+      const params = new URLSearchParams({
+        plan,
+        price: String(finalPriceCents),
+        name,
+        email,
+        cpf,
+        ...(couponCode ? { coupon: couponCode } : {}),
+        ...(promotionId ? { promo: promotionId } : {}),
+      })
+      router.push(`/checkout/cartao?${params.toString()}`)
+      onClose()
+      return
+    }
+
     setSubmitting(true)
-
     try {
-      const [expMonth, expYear] = cardExpiry.split('/')
-
       const res = await fetch('/api/asaas/checkout', {
         method: 'POST',
         headers: {
@@ -124,43 +132,23 @@ export function CheckoutModal({
         },
         body: JSON.stringify({
           plan,
-          paymentMethod: method,
+          paymentMethod: 'PIX',
           billingInfo: { name, email, cpfCnpj: cpf.replace(/\D/g, '') },
           promotionId: promotionId ?? undefined,
           couponCode: couponCode ?? undefined,
-          ...(method === 'CREDIT_CARD'
-            ? {
-                cardToken: {
-                  holderName: cardHolder,
-                  number: cardNumber.replace(/\s/g, ''),
-                  expiryMonth: expMonth?.trim(),
-                  expiryYear: expYear?.trim(),
-                  ccv: cardCvv,
-                },
-              }
-            : {}),
         }),
       })
 
       const data = await res.json()
-
       if (!res.ok) {
         setError(data.error ?? 'Erro desconhecido.')
         return
       }
 
-      if (method === 'PIX') {
-        setPixQr(data.pixQrCode)
-        setPixCopiaECola(data.pixCopiaECola)
-        setStep('pix_pending')
-        startPixPoll()
-      } else if (method === 'BOLETO') {
-        setBoletoUrl(data.boletoUrl)
-        setStep('boleto_pending')
-      } else {
-        // Card — webhook will confirm; treat as success
-        setStep('success')
-      }
+      setPixQr(data.pixQrCode)
+      setPixCopiaECola(data.pixCopiaECola)
+      setStep('pix_pending')
+      startPixPoll()
     } catch {
       setError('Falha na conexão. Verifique sua internet e tente novamente.')
     } finally {
@@ -168,8 +156,8 @@ export function CheckoutModal({
     }
   }, [
     submitting, plan, method, name, email, cpf,
-    cardExpiry, cardHolder, cardNumber, cardCvv,
-    promotionId, couponCode, startPixPoll, session?.access_token,
+    promotionId, couponCode, finalPriceCents,
+    startPixPoll, session?.access_token, router, onClose,
   ])
 
   const handleClose = useCallback(() => {
@@ -183,21 +171,21 @@ export function CheckoutModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
+      <DialogContent className="sm:max-w-sm p-0 overflow-hidden gap-0">
         {/* Header strip */}
-        <div className="bg-secondary px-6 py-5">
+        <div className="bg-secondary px-5 py-4">
           <DialogHeader>
-            <DialogTitle className="text-white font-[Archivo_Black] text-lg">
+            <DialogTitle className="text-white font-[Archivo_Black] text-base">
               {step === 'success' ? 'Acesso ativado!' : 'Finalizar assinatura'}
             </DialogTitle>
-            <p className="text-white/70 text-sm mt-0.5">
+            <p className="text-white/70 text-xs mt-0.5">
               {PLAN_LABEL[plan]} · {formatBRL(finalPriceCents)}
               {plan === 'monthly' ? '/mês' : '/ano'}
             </p>
           </DialogHeader>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-5 space-y-4">
           <AnimatePresence mode="wait">
             {step === 'form' && (
               <motion.div
@@ -206,10 +194,10 @@ export function CheckoutModal({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
-                className="space-y-5"
+                className="space-y-4"
               >
                 {/* Billing info */}
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="checkout-name" className="text-xs mb-1 block">Nome completo</Label>
@@ -243,13 +231,13 @@ export function CheckoutModal({
                   </div>
                 </div>
 
-                {/* Payment method tabs */}
+                {/* Payment method */}
                 <div>
                   <Label className="text-xs mb-2 block text-muted-foreground uppercase tracking-wider">
                     Forma de pagamento
                   </Label>
                   <div className="flex gap-2">
-                    {(['PIX', 'BOLETO', 'CREDIT_CARD'] as PaymentMethod[]).map((m) => (
+                    {(['PIX', 'CREDIT_CARD'] as PaymentMethod[]).map((m) => (
                       <button
                         key={m}
                         onClick={() => setMethod(m)}
@@ -261,70 +249,17 @@ export function CheckoutModal({
                         )}
                       >
                         {m === 'PIX' && <QrCode className="w-5 h-5" />}
-                        {m === 'BOLETO' && <FileText className="w-5 h-5" />}
                         {m === 'CREDIT_CARD' && <CreditCard className="w-5 h-5" />}
-                        {m === 'PIX' ? 'PIX' : m === 'BOLETO' ? 'Boleto' : 'Cartão'}
+                        {m === 'PIX' ? 'PIX' : 'Cartão'}
                       </button>
                     ))}
                   </div>
+                  {method === 'CREDIT_CARD' && (
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      Você será redirecionado para preencher os dados do cartão.
+                    </p>
+                  )}
                 </div>
-
-                {/* Card fields */}
-                {method === 'CREDIT_CARD' && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="space-y-3"
-                  >
-                    <div>
-                      <Label htmlFor="card-holder" className="text-xs mb-1 block">Nome no cartão</Label>
-                      <Input
-                        id="card-holder"
-                        value={cardHolder}
-                        onChange={(e) => setCardHolder(e.target.value)}
-                        placeholder="NOME SOBRENOME"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="card-number" className="text-xs mb-1 block">Número do cartão</Label>
-                      <Input
-                        id="card-number"
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
-                        placeholder="0000 0000 0000 0000"
-                        maxLength={19}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="card-expiry" className="text-xs mb-1 block">Validade</Label>
-                        <Input
-                          id="card-expiry"
-                          value={cardExpiry}
-                          onChange={(e) => setCardExpiry(e.target.value)}
-                          placeholder="MM/AAAA"
-                          maxLength={7}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="card-cvv" className="text-xs mb-1 block">CVV</Label>
-                        <Input
-                          id="card-cvv"
-                          value={cardCvv}
-                          onChange={(e) => setCardCvv(e.target.value)}
-                          placeholder="123"
-                          maxLength={4}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {method === 'BOLETO' && (
-                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3">
-                    Acesso ativado após compensação do boleto — <strong>1 a 3 dias úteis</strong>.
-                  </p>
-                )}
 
                 {error && (
                   <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-lg p-3">
@@ -334,19 +269,21 @@ export function CheckoutModal({
                 )}
 
                 <Button
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10"
                   onClick={handleSubmit}
                   disabled={submitting || !name || !email}
                 >
                   {submitting ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processando…</>
+                  ) : method === 'CREDIT_CARD' ? (
+                    'Continuar com Cartão →'
                   ) : (
-                    `Confirmar — ${formatBRL(finalPriceCents)}`
+                    `Gerar PIX — ${formatBRL(finalPriceCents)}`
                   )}
                 </Button>
 
                 <p className="text-center text-xs text-muted-foreground">
-                  Pagamento processado com segurança pela Asaas. Cancele quando quiser.
+                  Pagamento seguro via Asaas · Cancele quando quiser
                 </p>
               </motion.div>
             )}
@@ -356,13 +293,13 @@ export function CheckoutModal({
                 key="pix"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center gap-5 py-2"
+                className="flex flex-col items-center gap-4 py-2"
               >
                 {pixQr ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={pixQr} alt="QR Code PIX" className="w-52 h-52 rounded-xl border" />
+                  <img src={pixQr} alt="QR Code PIX" className="w-48 h-48 rounded-xl border" />
                 ) : (
-                  <div className="w-52 h-52 rounded-xl border bg-muted animate-pulse" />
+                  <div className="w-48 h-48 rounded-xl border bg-muted animate-pulse" />
                 )}
 
                 {pixCopiaECola && (
@@ -382,7 +319,7 @@ export function CheckoutModal({
                 <div className="text-center space-y-1">
                   <p className="text-sm font-medium">Aguardando pagamento…</p>
                   <p className="text-xs text-muted-foreground">
-                    Após o pagamento, seu acesso será ativado automaticamente.
+                    Seu acesso será ativado automaticamente.
                   </p>
                 </div>
 
@@ -390,39 +327,6 @@ export function CheckoutModal({
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Verificando a cada 5 segundos
                 </div>
-              </motion.div>
-            )}
-
-            {step === 'boleto_pending' && (
-              <motion.div
-                key="boleto"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center gap-5 py-2 text-center"
-              >
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-8 h-8 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <p className="font-semibold">Boleto gerado!</p>
-                  <p className="text-sm text-muted-foreground">
-                    Seu acesso será ativado após a compensação — <strong>1 a 3 dias úteis</strong>.
-                  </p>
-                </div>
-                {boletoUrl && (
-                  <a
-                    href={boletoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold rounded-xl px-5 py-2.5 text-sm hover:bg-primary/90 transition-colors"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Abrir boleto
-                  </a>
-                )}
-                <Button variant="ghost" size="sm" onClick={onClose}>
-                  Fechar
-                </Button>
               </motion.div>
             )}
 
@@ -443,14 +347,9 @@ export function CheckoutModal({
                 </motion.div>
                 <div className="space-y-1.5">
                   <p className="text-xl font-[Archivo_Black]">Bem-vindo ao Premium!</p>
-                  <p className="text-sm text-muted-foreground">
-                    Seu acesso foi ativado. Bons estudos!
-                  </p>
+                  <p className="text-sm text-muted-foreground">Seu acesso foi ativado. Bons estudos!</p>
                 </div>
-                <Button
-                  className="bg-primary text-primary-foreground font-semibold"
-                  onClick={handleClose}
-                >
+                <Button className="bg-primary text-primary-foreground font-semibold" onClick={handleClose}>
                   Ir para o painel
                 </Button>
               </motion.div>
