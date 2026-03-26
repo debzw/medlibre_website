@@ -1,33 +1,29 @@
 'use client'
 
-/**
- * Design Direction: Luxury Minimal — Editorial Gold
- * DFII: 13/15 (Excellent)
- *
- * Aesthetic thesis: High-contrast indigo/gold with a dominant annual card that
- * breaks the expected symmetry. The Founders banner is a full-bleed strip that
- * creates asymmetric tension above the cards.
- *
- * Differentiation anchor: The pricing toggle is a pill that slides — not tabs.
- * The annual card carries a bold "R$79,90 riscado" + gold badge. No gradient
- * backgrounds, no purple, no generic SaaS layout.
- */
-
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { CheckoutModal, type CheckoutPlan } from '@/components/CheckoutModal'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import {
-  CheckCircle2,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
+import {
+  CircleCheck,
+  ArrowRight,
   Clock,
   Users,
-  Crown,
   Zap,
   Brain,
   BarChart3,
   ShieldCheck,
+  Crown,
   Infinity,
 } from 'lucide-react'
 
@@ -74,8 +70,6 @@ function useCountdown(target: Date | null) {
   }
 }
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
 function CountdownPill({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center bg-white/10 rounded-lg px-3 py-1.5 min-w-[48px]">
@@ -104,7 +98,7 @@ const FEATURES_PREMIUM = [
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PricingPage() {
-  const [billing, setBilling] = useState<'annual' | 'monthly'>('annual')
+  const [isAnnual, setIsAnnual] = useState(true)
   const [promotion, setPromotion] = useState<Promotion | null>(null)
   const [coupon, setCoupon] = useState<CouponState>({ code: '', loading: false, valid: null })
   const [checkoutOpen, setCheckoutOpen] = useState(false)
@@ -122,7 +116,6 @@ export default function PricingPage() {
     !countdown.expired &&
     (promotion.slots_total === null || promotion.slots_used < promotion.slots_total)
 
-  // Prices
   const monthlyPrice = coupon.valid && coupon.finalPriceCents ? coupon.finalPriceCents : 7990
   const annualPrice =
     foundersActive
@@ -140,7 +133,7 @@ export default function PricingPage() {
         )
         setPromotion(active ?? null)
       })
-      .catch(() => {/* non-critical */})
+      .catch(() => {})
   }, [])
 
   const validateCoupon = useCallback(async () => {
@@ -150,7 +143,7 @@ export default function PricingPage() {
       const res = await fetch('/api/asaas/validate-coupon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: coupon.code, plan: billing }),
+        body: JSON.stringify({ code: coupon.code, plan: isAnnual ? 'annual' : 'monthly' }),
       })
       const data = await res.json()
       if (data.valid) {
@@ -169,7 +162,7 @@ export default function PricingPage() {
     } catch {
       setCoupon((c) => ({ ...c, loading: false, valid: false, error: 'Erro ao validar cupom.' }))
     }
-  }, [coupon.code, billing])
+  }, [coupon.code, isAnnual])
 
   const openCheckout = (plan: CheckoutPlan, priceCents: number, promoId?: string) => {
     setCheckoutPlan(plan)
@@ -186,280 +179,260 @@ export default function PricingPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="pt-20 pb-12 px-4 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <p className="text-primary text-sm font-semibold uppercase tracking-widest mb-4">
-            Planos & Preços
-          </p>
-          <h1 className="font-[Archivo_Black] text-4xl sm:text-5xl text-foreground max-w-2xl mx-auto leading-tight">
-            O método que aprova,<br />no preço que respeita.
-          </h1>
-          <p className="text-muted-foreground mt-4 max-w-md mx-auto">
-            Active Recall + Repetição Espaçada. Sem videoaulas. Sem enrolação.
-          </p>
-        </motion.div>
+      <section className="py-32">
+        <div className="container">
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
 
-        {/* Billing toggle */}
-        <div className="flex items-center justify-center gap-3 mt-10">
-          <span className={cn('text-sm font-medium', billing === 'monthly' ? 'text-foreground' : 'text-muted-foreground')}>
-            Mensal
-          </span>
-          <button
-            onClick={() => setBilling(billing === 'annual' ? 'monthly' : 'annual')}
-            className="relative w-14 h-7 rounded-full bg-secondary transition-colors"
-            aria-label="Alternar ciclo de cobrança"
-          >
-            <motion.div
-              layout
-              className="absolute top-1 w-5 h-5 rounded-full bg-primary shadow"
-              animate={{ left: billing === 'annual' ? '2.25rem' : '0.25rem' }}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            />
-          </button>
-          <span className={cn('text-sm font-medium flex items-center gap-1.5', billing === 'annual' ? 'text-foreground' : 'text-muted-foreground')}>
-            Anual
-            {billing === 'annual' && (
-              <span className="bg-primary/15 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5">
-                Melhor valor
+            {/* Heading */}
+            <p className="text-primary text-sm font-semibold uppercase tracking-widest">
+              Planos & Preços
+            </p>
+            <h1 className="text-pretty text-4xl font-bold lg:text-6xl font-[Archivo_Black]">
+              O método que aprova,<br className="hidden sm:block" /> no preço que respeita.
+            </h1>
+            <p className="text-muted-foreground lg:text-xl max-w-md">
+              Active Recall + Repetição Espaçada. Sem videoaulas. Sem enrolação.
+            </p>
+
+            {/* Billing toggle */}
+            <div className="flex items-center gap-3 text-lg">
+              <span className={isAnnual ? 'text-muted-foreground' : 'text-foreground font-medium'}>
+                Mensal
               </span>
-            )}
-          </span>
-        </div>
-      </section>
-
-      {/* ── Founders banner (conditional) ────────────────────── */}
-      <AnimatePresence>
-        {foundersActive && promotion && (
-          <motion.section
-            key="founders-banner"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="bg-secondary mx-4 sm:mx-auto sm:max-w-3xl rounded-2xl p-6 mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">
-              <div className="flex-1 space-y-1">
-                <p className="inline-block bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1 mb-2">
-                  Oferta Fundadores — {slotsRemaining} vagas
-                </p>
-                <p className="font-[Archivo_Black] text-white text-2xl">
-                  R$ 249<span className="text-base font-normal text-white/60">/ano</span>
-                </p>
-                <p className="text-white/50 text-xs line-through">R$ 958,80/ano</p>
-
-                {/* Slot bar */}
-                {promotion.slots_total && (
-                  <div className="pt-2 space-y-1">
-                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden w-48">
-                      <motion.div
-                        className="h-full bg-primary rounded-full"
-                        animate={{
-                          width: `${(promotion.slots_used / promotion.slots_total) * 100}%`,
-                        }}
-                        transition={{ duration: 0.8, ease: 'easeOut' }}
-                      />
-                    </div>
-                    <p className="text-[10px] text-white/40 flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {promotion.slots_used}/{promotion.slots_total} vagas preenchidas
-                    </p>
-                  </div>
+              <Switch
+                checked={isAnnual}
+                onCheckedChange={setIsAnnual}
+              />
+              <span className={isAnnual ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+                Anual
+                {isAnnual && (
+                  <span className="ml-2 bg-primary/15 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5">
+                    Melhor valor
+                  </span>
                 )}
-              </div>
+              </span>
+            </div>
 
-              <div className="flex flex-col items-end gap-4">
-                {/* Countdown */}
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-white/40 shrink-0" />
-                  <div className="flex gap-1.5">
-                    <CountdownPill value={countdown.days} label="d" />
-                    <CountdownPill value={countdown.hours} label="h" />
-                    <CountdownPill value={countdown.mins} label="m" />
-                    <CountdownPill value={countdown.secs} label="s" />
-                  </div>
-                </div>
-
-                <Button
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6"
-                  onClick={() => openCheckout('founders', promotion.price_cents, promotion.id)}
+            {/* Founders banner */}
+            <AnimatePresence>
+              {foundersActive && promotion && (
+                <motion.div
+                  key="founders-banner"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden w-full max-w-3xl"
                 >
-                  Garantir vaga de Fundador
-                </Button>
-              </div>
-            </div>
-          </motion.section>
-        )}
-      </AnimatePresence>
+                  <div className="bg-secondary rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                    <div className="flex-1 space-y-1">
+                      <p className="inline-block bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1 mb-2">
+                        Oferta Fundadores — {slotsRemaining} vagas
+                      </p>
+                      <p className="font-[Archivo_Black] text-white text-2xl">
+                        R$ 249<span className="text-base font-normal text-white/60">/ano</span>
+                      </p>
+                      <p className="text-white/50 text-xs line-through">R$ 958,80/ano</p>
+                      {promotion.slots_total && (
+                        <div className="pt-2 space-y-1">
+                          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden w-48">
+                            <motion.div
+                              className="h-full bg-primary rounded-full"
+                              animate={{ width: `${(promotion.slots_used / promotion.slots_total) * 100}%` }}
+                              transition={{ duration: 0.8, ease: 'easeOut' }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-white/40 flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {promotion.slots_used}/{promotion.slots_total} vagas preenchidas
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-4">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-white/40 shrink-0" />
+                        <div className="flex gap-1.5">
+                          <CountdownPill value={countdown.days} label="d" />
+                          <CountdownPill value={countdown.hours} label="h" />
+                          <CountdownPill value={countdown.mins} label="m" />
+                          <CountdownPill value={countdown.secs} label="s" />
+                        </div>
+                      </div>
+                      <Button
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6"
+                        onClick={() => openCheckout('founders', promotion.price_cents, promotion.id)}
+                      >
+                        Garantir vaga de Fundador
+                        <ArrowRight className="ml-2 size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-      {/* ── Plan cards ───────────────────────────────────────── */}
-      <section className="px-4 pb-8">
-        <div className="grid sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
-          {/* Free card */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="rounded-2xl border border-border bg-card p-6 flex flex-col"
-          >
-            <div className="mb-6">
-              <p className="text-sm font-semibold text-muted-foreground mb-1">Explorador</p>
-              <p className="font-[Archivo_Black] text-3xl text-foreground">Gratuito</p>
-              <p className="text-xs text-muted-foreground mt-1">Sempre</p>
-            </div>
+            {/* Plan cards */}
+            <div className="flex flex-col items-stretch gap-6 md:flex-row">
 
-            <ul className="space-y-3 flex-1 mb-8">
-              {FEATURES_FREE.map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                  <Icon className="w-4 h-4 shrink-0 text-muted-foreground/60" />
-                  {text}
-                </li>
-              ))}
-            </ul>
+              {/* Free card */}
+              <Card className="flex w-80 flex-col justify-between text-left">
+                <CardHeader>
+                  <CardTitle>
+                    <p>Explorador</p>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Para começar</p>
+                  <span className="text-4xl font-bold font-[Archivo_Black]">Gratuito</span>
+                  <p className="text-muted-foreground">Sempre, para sempre</p>
+                </CardHeader>
+                <CardContent>
+                  <Separator className="mb-6" />
+                  <ul className="space-y-4">
+                    {FEATURES_FREE.map(({ icon: Icon, text }) => (
+                      <li key={text} className="flex items-center gap-2">
+                        <CircleCheck className="size-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">{text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+                <CardFooter className="mt-auto">
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/auth">
+                      Começar grátis
+                      <ArrowRight className="ml-2 size-4" />
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
 
-            <Link href="/auth">
-              <Button variant="outline" className="w-full">
-                Começar grátis
-              </Button>
-            </Link>
-          </motion.div>
+              {/* Premium card */}
+              <Card className="flex w-80 flex-col justify-between text-left border-2 border-primary relative overflow-hidden">
+                {/* Gold accent top line */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-xl" />
 
-          {/* Premium card */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.18 }}
-            className="rounded-2xl border-2 border-primary bg-card p-6 flex flex-col relative overflow-hidden"
-          >
-            {/* Gold accent top line */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-primary rounded-t-2xl" />
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <p className="text-primary">Premium</p>
+                    <span className="bg-primary/15 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5">
+                      Recomendado
+                    </span>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Para quem quer passar</p>
 
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-sm font-semibold text-primary">Premium</p>
-                <span className="bg-primary/15 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5">
-                  Recomendado
-                </span>
-              </div>
-
-              <AnimatePresence mode="wait">
-                {billing === 'annual' ? (
-                  <motion.div
-                    key="annual"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    className="space-y-0.5"
-                  >
-                    {!foundersActive && (
-                      <p className="text-xs text-muted-foreground line-through">R$ 79,90/mês</p>
+                  <AnimatePresence mode="wait">
+                    {isAnnual ? (
+                      <motion.div
+                        key="annual"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="space-y-0.5"
+                      >
+                        {!foundersActive && (
+                          <p className="text-xs text-muted-foreground line-through">R$ 79,90/mês</p>
+                        )}
+                        <span className="text-4xl font-bold font-[Archivo_Black]">
+                          R$ {foundersActive ? '249' : '699'}
+                        </span>
+                        <p className="text-muted-foreground">
+                          {foundersActive ? 'Oferta Fundadores' : 'R$ 58,25/mês — economize 26%'}
+                        </p>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="monthly"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                      >
+                        <span className="text-4xl font-bold font-[Archivo_Black]">R$ 79,90</span>
+                        <p className="text-muted-foreground">Por mês, sem fidelidade</p>
+                      </motion.div>
                     )}
-                    <p className="font-[Archivo_Black] text-3xl text-foreground">
-                      R$ {foundersActive ? '249' : '699'}
-                      <span className="text-sm font-normal text-muted-foreground">/ano</span>
-                    </p>
-                    {!foundersActive && (
-                      <p className="text-xs text-muted-foreground">R$ 58,25/mês — economize 26%</p>
-                    )}
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="monthly"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
+                  </AnimatePresence>
+                </CardHeader>
+
+                <CardContent>
+                  <Separator className="mb-6" />
+                  <p className="mb-3 font-semibold">Tudo incluso:</p>
+                  <ul className="space-y-4">
+                    {FEATURES_PREMIUM.map(({ icon: Icon, text }) => (
+                      <li key={text} className="flex items-center gap-2">
+                        <CircleCheck className="size-4 text-primary" />
+                        <span>{text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+
+                <CardFooter className="mt-auto flex-col gap-3">
+                  <Button
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11"
+                    onClick={() =>
+                      openCheckout(
+                        isAnnual ? (foundersActive ? 'founders' : 'annual') : 'monthly',
+                        isAnnual ? annualPrice : monthlyPrice,
+                        isAnnual && foundersActive ? promotion?.id : undefined,
+                      )
+                    }
                   >
-                    <p className="font-[Archivo_Black] text-3xl text-foreground">
-                      R$ 79,90
-                      <span className="text-sm font-normal text-muted-foreground">/mês</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Sem fidelidade</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    Assinar {isAnnual ? 'Anual' : 'Mensal'}
+                    <ArrowRight className="ml-2 size-4" />
+                  </Button>
+
+                  {/* Coupon field */}
+                  <div className="w-full space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        value={coupon.code}
+                        onChange={(e) => setCoupon((c) => ({ ...c, code: e.target.value.toUpperCase(), valid: null }))}
+                        onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
+                        placeholder="CUPOM DE DESCONTO"
+                        className="flex-1 h-9 rounded-xl border border-border bg-background px-3 text-xs uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 px-3 text-xs"
+                        onClick={validateCoupon}
+                        disabled={coupon.loading || !coupon.code.trim()}
+                      >
+                        {coupon.loading ? '…' : 'Aplicar'}
+                      </Button>
+                    </div>
+                    <AnimatePresence>
+                      {coupon.valid === true && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-xs text-[#38BE58] text-center"
+                        >
+                          ✓ {coupon.label} aplicado!
+                        </motion.p>
+                      )}
+                      {coupon.valid === false && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-xs text-destructive text-center"
+                        >
+                          {coupon.error}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </CardFooter>
+              </Card>
             </div>
 
-            <ul className="space-y-3 flex-1 mb-8">
-              {FEATURES_PREMIUM.map(({ icon: Icon, text }) => (
-                <li key={text} className="flex items-center gap-2.5 text-sm text-foreground">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-primary" />
-                  {text}
-                </li>
-              ))}
-            </ul>
-
-            <Button
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11"
-              onClick={() =>
-                openCheckout(
-                  billing === 'annual' ? (foundersActive ? 'founders' : 'annual') : 'monthly',
-                  billing === 'annual' ? annualPrice : monthlyPrice,
-                  billing === 'annual' && foundersActive ? promotion?.id : undefined,
-                )
-              }
-            >
-              Assinar {billing === 'annual' ? 'Anual' : 'Mensal'}
-            </Button>
-          </motion.div>
+            {/* Footer note */}
+            <p className="text-sm text-muted-foreground max-w-md">
+              Cancele quando quiser. Acesso imediato após confirmação do pagamento.
+              Pagamentos processados com segurança pela{' '}
+              <span className="font-medium text-foreground">Asaas</span>.
+            </p>
+          </div>
         </div>
-      </section>
-
-      {/* ── Coupon field ─────────────────────────────────────── */}
-      <section className="px-4 pb-10 max-w-sm mx-auto">
-        <p className="text-xs text-center text-muted-foreground mb-3">Tem um cupom de desconto?</p>
-        <div className="flex gap-2">
-          <input
-            value={coupon.code}
-            onChange={(e) => setCoupon((c) => ({ ...c, code: e.target.value.toUpperCase(), valid: null }))}
-            onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
-            placeholder="CÓDIGO"
-            className="flex-1 h-9 rounded-xl border border-border bg-background px-3 text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-9 px-4"
-            onClick={validateCoupon}
-            disabled={coupon.loading || !coupon.code.trim()}
-          >
-            {coupon.loading ? '…' : 'Aplicar'}
-          </Button>
-        </div>
-        <AnimatePresence>
-          {coupon.valid === true && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-xs text-[#38BE58] mt-2 text-center"
-            >
-              ✓ {coupon.label} aplicado!
-            </motion.p>
-          )}
-          {coupon.valid === false && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-xs text-destructive mt-2 text-center"
-            >
-              {coupon.error}
-            </motion.p>
-          )}
-        </AnimatePresence>
-      </section>
-
-      {/* ── FAQ teaser ───────────────────────────────────────── */}
-      <section className="px-4 pb-20 max-w-xl mx-auto text-center space-y-2">
-        <p className="text-sm text-muted-foreground">
-          Dúvidas? Cancele quando quiser. Acesso imediato após confirmação do pagamento.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Pagamentos processados com segurança pela{' '}
-          <span className="font-medium text-foreground">Asaas</span>.
-        </p>
       </section>
 
       <CheckoutModal

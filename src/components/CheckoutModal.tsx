@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/contexts/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -63,6 +63,7 @@ export function CheckoutModal({
 }: CheckoutModalProps) {
   const { session } = useAuthContext()
   const router = useRouter()
+
   const [method, setMethod] = useState<PaymentMethod>('PIX')
   const [step, setStep] = useState<Step>('form')
   const [submitting, setSubmitting] = useState(false)
@@ -77,6 +78,14 @@ export function CheckoutModal({
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [cpf, setCpf] = useState('')
+
+  // Redirect to login if not authenticated when modal opens
+  useEffect(() => {
+    if (open && !session) {
+      onClose()
+      router.push('/auth?redirect=/pricing')
+    }
+  }, [open, session, onClose, router])
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -98,7 +107,7 @@ export function CheckoutModal({
           stopPoll()
           setStep('success')
         }
-      } catch {/* ignore */}
+      } catch {/* ignore */ }
     }, 5000)
   }, [stopPoll, session?.access_token])
 
@@ -254,11 +263,6 @@ export function CheckoutModal({
                       </button>
                     ))}
                   </div>
-                  {method === 'CREDIT_CARD' && (
-                    <p className="text-[11px] text-muted-foreground mt-2">
-                      Você será redirecionado para preencher os dados do cartão.
-                    </p>
-                  )}
                 </div>
 
                 {error && (
