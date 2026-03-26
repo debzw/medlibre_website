@@ -23,7 +23,10 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    if (profile?.email_confirmed === false) {
+    // Aguarda o perfil carregar antes de decidir para onde ir
+    if (profile === null) return;
+
+    if (profile.email_confirmed === false) {
       router.replace('/verify-email');
       return;
     }

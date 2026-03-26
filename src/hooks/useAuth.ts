@@ -135,39 +135,32 @@ export function useAuth() {
           }
         }
       } else {
-        // PERFIL NÃO EXISTE: novo usuário — cria perfil com email_confirmed: false
-        console.log("Perfil não encontrado. Criando perfil padrão...");
+        // PERFIL NÃO EXISTE: novo usuário — cria via API route (service_role ignora RLS)
+        console.log("Perfil não encontrado. Criando perfil via API...");
         const metadata = currentUser?.user_metadata || {};
-        const { data: newProfile, error: createError } = await supabase
-          .from('user_profiles')
-          .insert([
-            {
-              id: userId,
-              email: currentUser?.email || null,
-              full_name: metadata.full_name || null,
-              avatar_url: metadata.avatar_url || metadata.picture || null,
-              locale: metadata.locale || null,
-              university: null,
-              tier: 'free',
-              questions_answered_today: 0,
-              last_reset_date: new Date().toISOString().split('T')[0],
-              theme_preference: 'dark',
-              email_confirmed: false,
-            }
-          ])
-          .select()
-          .single();
+        const provider = currentUser?.app_metadata?.provider || 'email';
 
-        if (createError) {
-          console.error('Error creating default profile:', createError);
-        } else if (newProfile) {
-          setProfile(newProfile as UserProfile);
-          // Dispara envio do e-mail de verificação (não bloqueia o fluxo)
-          fetch('/api/auth/send-verification', {
+        try {
+          const res = await fetch('/api/auth/create-profile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, email: currentUser?.email }),
-          }).catch(err => console.error('Error sending verification email:', err));
+            body: JSON.stringify({
+              userId,
+              email: currentUser?.email,
+              full_name: metadata.full_name || metadata.name || null,
+              avatar_url: metadata.avatar_url || metadata.picture || null,
+              locale: metadata.locale || null,
+              provider,
+            }),
+          });
+          const result = await res.json();
+          if (result.profile) {
+            setProfile(result.profile as UserProfile);
+          } else {
+            console.error('Error creating profile:', result.error);
+          }
+        } catch (err) {
+          console.error('Error calling create-profile API:', err);
         }
       }
     } catch (err) {
