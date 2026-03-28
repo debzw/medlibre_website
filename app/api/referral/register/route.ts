@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Busca o dono do código
     const { data: referrer } = await supabaseAdmin
       .from('user_profiles')
-      .select('id, tier_expiry')
+      .select('id')
       .eq('referral_code', code)
       .single();
 
@@ -60,27 +60,13 @@ export async function POST(request: NextRequest) {
       .update({ referred_by: code })
       .eq('id', user.id);
 
-    // Insere em referral_uses
+    // Insere em referral_uses — o trigger trg_referral_extend_premium recalcula
+    // tier_expiry do referente automaticamente
     await supabaseAdmin.from('referral_uses').insert({
       referral_code: code,
       referrer_id: referrer.id,
       new_user_id: user.id,
     });
-
-    // Estende tier_expiry do referente em +1 mês (sem overflow de dia do mês)
-    const currentExpiry = referrer.tier_expiry ? new Date(referrer.tier_expiry) : new Date();
-    const base = currentExpiry > new Date() ? new Date(currentExpiry) : new Date();
-    const targetMonth = base.getMonth() + 1;
-    base.setMonth(targetMonth);
-    if (base.getMonth() !== targetMonth % 12) {
-      // Overflow (ex: 31 Jan → 3 Mar) — recua para último dia do mês correto
-      base.setDate(0);
-    }
-
-    await supabaseAdmin
-      .from('user_profiles')
-      .update({ tier: 'paid', tier_expiry: base.toISOString() })
-      .eq('id', referrer.id);
 
     return NextResponse.json({ success: true });
   } catch (err) {

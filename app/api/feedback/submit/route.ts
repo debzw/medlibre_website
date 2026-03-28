@@ -7,10 +7,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Beta encerra em 07/04/2026 — premium estendido por 3 meses a partir dessa data
-const BETA_END = new Date('2026-04-07T23:59:59Z');
-const EXTENSION_MONTHS = 3;
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -67,34 +63,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Preencha todas as avaliações (1–5).' }, { status: 400 });
     }
 
-    // Busca expiry atual do usuário para não reduzir acesso acumulado via referrals
-    const { data: userProfile } = await supabaseAdmin
-      .from('user_profiles')
-      .select('tier_expiry')
-      .eq('id', userId)
-      .single();
-
-    const now = new Date();
-    const baseDate = now > BETA_END ? now : BETA_END;
-    const candidateExpiry = new Date(baseDate);
-    // Adiciona meses sem overflow: preserva dia do mês dentro do limite do mês alvo
-    const targetMonth = candidateExpiry.getMonth() + EXTENSION_MONTHS;
-    candidateExpiry.setMonth(targetMonth);
-    if (candidateExpiry.getMonth() !== ((targetMonth) % 12)) {
-      // Overflow (ex: 31 Jan + 1 mês = 3 Mar) — recua para último dia do mês correto
-      candidateExpiry.setDate(0);
-    }
-
-    // Usa o maior entre o expiry candidato e o expiry atual (nunca reduz)
-    const currentExpiry = userProfile?.tier_expiry ? new Date(userProfile.tier_expiry) : new Date(0);
-    const newExpiry = candidateExpiry > currentExpiry ? candidateExpiry : currentExpiry;
-    const newExpiryISO = newExpiry.toISOString();
-
-    // Insere feedback
+    // Insere feedback — o trigger trg_feedback_extend_premium recalcula tier_expiry automaticamente
     const { error: insertError } = await supabaseAdmin.from('user_feedback').insert({
       user_id: userId,
       ...feedback,
-      premium_extended_at: now.toISOString(),
+      premium_extended_at: new Date().toISOString(),
     });
 
     if (insertError) {
@@ -102,18 +75,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao salvar feedback.' }, { status: 500 });
     }
 
-    // Estende tier_expiry
-    const { error: updateError } = await supabaseAdmin
+    // Lê o novo expiry calculado pelo trigger para devolver ao cliente
+    const { data: profile } = await supabaseAdmin
       .from('user_profiles')
-      .update({ tier: 'paid', tier_expiry: newExpiryISO })
-      .eq('id', userId);
+      .select('tier_expiry')
+      .eq('id', userId)
+      .single();
 
-    if (updateError) {
-      console.error('[feedback/submit] update tier error:', updateError);
-      // Não falha o request — o feedback foi salvo, o admin pode corrigir manualmente
-    }
-
-    return NextResponse.json({ success: true, new_expiry: newExpiryISO });
+    return NextResponse.json({ success: true, new_expiry: profile?.tier_expiry ?? null });
   } catch (err) {
     console.error('[feedback/submit] unexpected error:', err);
     return NextResponse.json({ error: 'Erro interno.' }, { status: 500 });
