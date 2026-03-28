@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,14 @@ export default function AuthPage() {
     const searchParams = useSearchParams();
     const errorParam = searchParams.get('error');
     const refCode = searchParams.get('ref');
+    const initialDigits = refCode?.replace('MED-', '').slice(0, 4).split('') ?? [];
+    const [digits, setDigits] = useState<string[]>([
+        initialDigits[0] ?? '',
+        initialDigits[1] ?? '',
+        initialDigits[2] ?? '',
+        initialDigits[3] ?? '',
+    ]);
+    const referralInput = 'MED-' + digits.join('');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -23,14 +31,13 @@ export default function AuthPage() {
         }
     }, [user, router]);
 
-    // Persiste o código de referral antes do redirect OAuth
-    useEffect(() => {
-        if (refCode) {
-            localStorage.setItem('medlibre_ref', refCode);
-        }
-    }, [refCode]);
-
     const handleGoogleLogin = async () => {
+        const code = digits.some(d => d) ? referralInput.trim().toUpperCase() : '';
+        if (code) {
+            localStorage.setItem('medlibre_ref', code);
+        } else {
+            localStorage.removeItem('medlibre_ref');
+        }
         setSigningIn(true);
         const { error } = await signInWithGoogle();
         if (error) {
@@ -105,6 +112,43 @@ export default function AuthPage() {
                         <a href="/privacy" className="underline hover:text-primary">Termos de Serviço</a> e{' '}
                         <a href="/privacy" className="underline hover:text-primary">Política de Privacidade</a>.
                     </p>
+
+                    <div className="mt-4 flex justify-center">
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono text-muted-foreground/50 tracking-[0.4em]">MED-</span>
+                        {digits.map((d, i) => (
+                            <input
+                                key={i}
+                                id={`ref-digit-${i}`}
+                                type="text"
+                                inputMode="text"
+                                value={d}
+                                maxLength={1}
+                                onChange={(e) => {
+                                    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                    const next = [...digits];
+                                    next[i] = val.slice(-1);
+                                    setDigits(next);
+                                    if (val && i < 3) document.getElementById(`ref-digit-${i + 1}`)?.focus();
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Backspace' && !digits[i] && i > 0) {
+                                        document.getElementById(`ref-digit-${i - 1}`)?.focus();
+                                    }
+                                }}
+                                onPaste={(e) => {
+                                    e.preventDefault();
+                                    const pasted = e.clipboardData.getData('text').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+                                    const next = ['', '', '', ''];
+                                    pasted.split('').forEach((c, idx) => { next[idx] = c; });
+                                    setDigits(next);
+                                    document.getElementById(`ref-digit-${Math.min(pasted.length, 3)}`)?.focus();
+                                }}
+                                className="w-6 h-7 rounded border border-input bg-background text-[10px] font-mono text-center uppercase text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:text-foreground"
+                            />
+                        ))}
+                    </div>
+                    </div>
                 </div>
             </div>
         </div>
