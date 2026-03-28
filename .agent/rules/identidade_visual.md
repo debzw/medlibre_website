@@ -2,9 +2,9 @@
 trigger: always_on
 ---
 
-# Identidade Visual - MedLibre
+# Identidade Visual - Medlibre
 
-MedLibre é uma plataforma freemium de preparação para residência médica que prioriza a fluidez, clareza e foco do estudante.
+Medlibre é uma plataforma freemium de preparação para residência médica que prioriza a fluidez, clareza e foco do estudante.
 
 ## 1. Nome da Marca
 - **Nome:** Medlibre

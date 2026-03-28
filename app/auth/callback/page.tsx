@@ -23,7 +23,6 @@ export default function AuthCallbackPage() {
     if (!refCode) return;
 
     referralAttempted.current = true;
-    localStorage.removeItem('medlibre_ref');
 
     // Aguarda o perfil ser criado pelo trigger do Supabase antes de registrar o referral
     const registerReferral = async () => {
@@ -37,7 +36,11 @@ export default function AuthCallbackPage() {
           },
           body: JSON.stringify({ referral_code: refCode }),
         });
-        if (res.ok || res.status === 409) break; // 409 = já registrado, pode parar
+        if (res.ok || res.status === 409) {
+          // Só remove do localStorage após confirmação (ok = registrado, 409 = já registrado)
+          localStorage.removeItem('medlibre_ref');
+          break;
+        }
       }
     };
     registerReferral().catch(() => {});
