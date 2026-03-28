@@ -1,19 +1,47 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function AuthCallbackPage() {
-  const { user, profile, loading } = useAuthContext();
+  const { user, session, profile, loading } = useAuthContext();
   const router = useRouter();
   const [timedOut, setTimedOut] = useState(false);
+  const referralAttempted = useRef(false);
 
   useEffect(() => {
     const timeout = setTimeout(() => setTimedOut(true), 8000);
     return () => clearTimeout(timeout);
   }, []);
+
+  // Registra referral code se presente no localStorage (uma única vez)
+  useEffect(() => {
+    if (!user || !session || referralAttempted.current) return;
+    const refCode = localStorage.getItem('medlibre_ref');
+    if (!refCode) return;
+
+    referralAttempted.current = true;
+    localStorage.removeItem('medlibre_ref');
+
+    // Aguarda o perfil ser criado pelo trigger do Supabase antes de registrar o referral
+    const registerReferral = async () => {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+        const res = await fetch('/api/referral/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ referral_code: refCode }),
+        });
+        if (res.ok || res.status === 409) break; // 409 = já registrado, pode parar
+      }
+    };
+    registerReferral().catch(() => {});
+  }, [user, session]);
 
   useEffect(() => {
     if (loading) return;

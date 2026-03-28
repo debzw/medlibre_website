@@ -78,15 +78,11 @@ export function useAuth() {
       }
     );
 
+    // getSession is redundant: onAuthStateChange fires INITIAL_SESSION before this resolves
+    // keeping only as a safety net for the no-session case (sets loading=false if auth fires but user is null)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log(`[PERF] AUTH: getSession resolved → ${performance.now().toFixed(0)}ms | hasSession=${!!session}`);
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user);
-      } else {
-        console.log(`[PERF] AUTH: no session → loading=false @ ${performance.now().toFixed(0)}ms`);
+      if (!session) {
+        console.log(`[PERF] AUTH: getSession resolved (no session) → loading=false @ ${performance.now().toFixed(0)}ms`);
         setLoading(false);
       }
     });

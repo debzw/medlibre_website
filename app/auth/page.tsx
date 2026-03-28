@@ -9,11 +9,12 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AuthPage() {
-    const [loading, setLoading] = useState(false);
-    const { user, signInWithGoogle } = useAuthContext();
+    const [signingIn, setSigningIn] = useState(false);
+    const { user, signInWithGoogle, loading } = useAuthContext();
     const router = useRouter();
     const searchParams = useSearchParams();
     const errorParam = searchParams.get('error');
+    const refCode = searchParams.get('ref');
     const { toast } = useToast();
 
     useEffect(() => {
@@ -22,8 +23,15 @@ export default function AuthPage() {
         }
     }, [user, router]);
 
+    // Persiste o código de referral antes do redirect OAuth
+    useEffect(() => {
+        if (refCode) {
+            localStorage.setItem('medlibre_ref', refCode);
+        }
+    }, [refCode]);
+
     const handleGoogleLogin = async () => {
-        setLoading(true);
+        setSigningIn(true);
         const { error } = await signInWithGoogle();
         if (error) {
             toast({
@@ -32,8 +40,16 @@ export default function AuthPage() {
                 variant: 'destructive',
             });
         }
-        setLoading(false);
+        setSigningIn(false);
     };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -69,9 +85,9 @@ export default function AuthPage() {
                         variant="outline"
                         className="w-full h-11 border-2 hover:bg-secondary/50 font-semibold transition-all"
                         onClick={handleGoogleLogin}
-                        disabled={loading}
+                        disabled={signingIn}
                     >
-                        {loading ? (
+                        {signingIn ? (
                             <Loader2 className="w-5 h-5 mr-3 animate-spin" />
                         ) : (
                             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
