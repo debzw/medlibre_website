@@ -114,7 +114,7 @@ export function buildBetaEndingEmail(params: {
               </p>
 
               <h1 class="font-title" style="font-size:28px;line-height:1.15;margin:0 0 24px 0;color:#212329;letter-spacing:-0.02em;">
-                Você acreditou antes de todo mundo.<br>Isso tem valor real.
+                Você acreditou antes de todo mundo.<br>Isso tem valor.
               </h1>
 
               <p class="font-body" style="font-size:15px;line-height:1.75;color:#293452;margin:0 0 16px 0;">
@@ -192,7 +192,24 @@ export function buildBetaEndingEmail(params: {
                         </td>
                       </tr>
                     </table>
-                    <p class="font-body" style="font-size:12px;color:#9ca3af;margin:0;">
+                    <!-- Mensagem pronta para copiar/compartilhar -->
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:20px;">
+                      <tr>
+                        <td style="background:#eef0f2;border-radius:8px;padding:16px 20px;border-left:3px solid #EDB92E;">
+                          <p class="font-body" style="font-size:10px;color:#9ca3af;margin:0 0 8px 0;letter-spacing:0.1em;text-transform:uppercase;">
+                            Mensagem pronta para enviar
+                          </p>
+                          <p class="font-body" style="font-size:13px;line-height:1.65;color:#293452;margin:0;">
+                            Estou estudando para residência médica com o MedLibre e tem sido muito bom!
+                            Você pode entrar direto no Premium usando o meu código de convite:
+                            <strong style="color:#212329;letter-spacing:0.06em;">${escapeHtml(referralCode)}</strong><br>
+                            Acesse: ${signupUrl}?ref=${encodeURIComponent(referralCode)}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p class="font-body" style="font-size:12px;color:#9ca3af;margin:0 0 4px 0;">
                       Link direto:
                       <a href="${signupUrl}?ref=${encodeURIComponent(referralCode)}"
                         style="color:#293452;word-break:break-all;">

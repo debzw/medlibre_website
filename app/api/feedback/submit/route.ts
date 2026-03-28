@@ -67,10 +67,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Preencha todas as avaliações (1–5).' }, { status: 400 });
     }
 
+    // Busca expiry atual do usuário para não reduzir acesso acumulado via referrals
+    const { data: userProfile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('tier_expiry')
+      .eq('id', userId)
+      .single();
+
     const now = new Date();
     const baseDate = now > BETA_END ? now : BETA_END;
-    const newExpiry = new Date(baseDate);
-    newExpiry.setMonth(newExpiry.getMonth() + EXTENSION_MONTHS);
+    const candidateExpiry = new Date(baseDate);
+    // Adiciona meses sem overflow: preserva dia do mês dentro do limite do mês alvo
+    const targetMonth = candidateExpiry.getMonth() + EXTENSION_MONTHS;
+    candidateExpiry.setMonth(targetMonth);
+    if (candidateExpiry.getMonth() !== ((targetMonth) % 12)) {
+      // Overflow (ex: 31 Jan + 1 mês = 3 Mar) — recua para último dia do mês correto
+      candidateExpiry.setDate(0);
+    }
+
+    // Usa o maior entre o expiry candidato e o expiry atual (nunca reduz)
+    const currentExpiry = userProfile?.tier_expiry ? new Date(userProfile.tier_expiry) : new Date(0);
+    const newExpiry = candidateExpiry > currentExpiry ? candidateExpiry : currentExpiry;
     const newExpiryISO = newExpiry.toISOString();
 
     // Insere feedback

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         avatar_url: avatar_url || null,
         locale: locale || null,
         tier: 'paid',
-        tier_expiry: '2026-04-01 00:00:00-03',
+        tier_expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         questions_answered_today: 0,
         last_reset_date: new Date().toISOString().split('T')[0],
         theme_preference: 'dark',

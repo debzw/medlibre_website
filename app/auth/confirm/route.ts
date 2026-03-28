@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendWelcomeEmail } from '@/lib/welcomeEmail';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,6 +41,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${SITE_URL}/auth?error=link_expired`);
   }
 
+  // Busca email e nome antes de confirmar (para o e-mail de boas-vindas)
+  const { data: profileData } = await supabaseAdmin
+    .from('user_profiles')
+    .select('email, full_name')
+    .eq('id', tokenRow.user_id)
+    .single();
+
   // Confirma o e-mail do usuário
   const { error: updateError } = await supabaseAdmin
     .from('user_profiles')
@@ -53,6 +61,14 @@ export async function GET(request: NextRequest) {
 
   // Remove o token usado
   await supabaseAdmin.from('verification_tokens').delete().eq('token', token);
+
+  // Dispara e-mail de boas-vindas (fire-and-forget — não bloqueia a resposta)
+  if (profileData?.email) {
+    const firstName = profileData.full_name?.split(' ')[0] ?? 'Estudante';
+    sendWelcomeEmail({ to: profileData.email, firstName }).catch((err) =>
+      console.error('[confirm] welcome email failed:', err)
+    );
+  }
 
   return new NextResponse(
     `<!DOCTYPE html>

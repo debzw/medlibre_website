@@ -7,8 +7,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Envia em batches de 10 com pausa de 1s entre batches (respeita rate limit Resend)
-const BATCH_SIZE = 10;
+// Envia em batches de 4 com pausa de 1s entre batches (respeita rate limit Resend: 5 req/s)
+const BATCH_SIZE = 4;
 const BATCH_DELAY_MS = 1000;
 
 function sleep(ms: number) {

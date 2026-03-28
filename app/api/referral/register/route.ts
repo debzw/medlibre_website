@@ -67,10 +67,15 @@ export async function POST(request: NextRequest) {
       new_user_id: user.id,
     });
 
-    // Estende tier_expiry do referente em +1 mês
+    // Estende tier_expiry do referente em +1 mês (sem overflow de dia do mês)
     const currentExpiry = referrer.tier_expiry ? new Date(referrer.tier_expiry) : new Date();
-    const base = currentExpiry > new Date() ? currentExpiry : new Date();
-    base.setMonth(base.getMonth() + 1);
+    const base = currentExpiry > new Date() ? new Date(currentExpiry) : new Date();
+    const targetMonth = base.getMonth() + 1;
+    base.setMonth(targetMonth);
+    if (base.getMonth() !== targetMonth % 12) {
+      // Overflow (ex: 31 Jan → 3 Mar) — recua para último dia do mês correto
+      base.setDate(0);
+    }
 
     await supabaseAdmin
       .from('user_profiles')
