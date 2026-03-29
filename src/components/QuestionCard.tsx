@@ -13,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AdBanner } from './AdBanner';
 import { ReportDialog } from './modals/ReportDialog';
 import { toast } from '@/components/ui/sonner';
 
@@ -235,13 +234,6 @@ export function QuestionCard({ question, onAnswered, canAnswer, historyEntry, so
           </div>
         )}
       </div>
-
-      {/* Ad Banner for mobile - Only shown for free/guest users */}
-      {userType !== 'paid' && (
-        <div className="md:hidden py-1">
-          <AdBanner variant="horizontal" className="h-[100px] border-dashed border-2 border-border/30 rounded-xl" slotId="7061295697" />
-        </div>
-      )}
 
       {/* Options */}
       <div className="space-y-3">

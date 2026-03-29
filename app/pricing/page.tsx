@@ -69,33 +69,19 @@ const FEATURES_PREMIUM = [
 
 const REVIEWS = [
   {
-    name: 'Mariana S.',
-    role: 'R2 Clínica Médica — USP',
-    avatar: 'MS',
+    name: 'Lucas B.',
+    role: 'R2 Ortopedia - Unifesp',
+    avatar: 'LB',
     stars: 5,
-    text: 'Passei a usar o Medlibre 3 semanas antes da prova do REVALIDA e senti a diferença na fixação. O método é simples e realmente funciona.',
+    text: 'Passei direto do sexto ano para a residência sem precisar fazer cursinho. Meu estudo foi 100% direcionado por questões e flashcards. O Medlibre entrega o essencial para a aprovação',
   },
   {
-    name: 'Lucas F.',
-    role: 'Residente de Pediatria — UNIFESP',
-    avatar: 'LF',
+    name: 'Debora B.',
+    role: 'Estudante 4º ano - Unifesp',
+    avatar: 'DB',
     stars: 5,
-    text: 'Diferente de outros apps, aqui eu consigo ver exatamente onde estou falhando por especialidade. Isso muda completamente a forma de estudar.',
-  },
-  {
-    name: 'Camila R.',
-    role: 'Acadêmica de Medicina — UFMG',
-    avatar: 'CR',
-    stars: 5,
-    text: 'Comecei na versão gratuita e em 2 semanas já assine o Premium. A repetição espaçada é viciante no bom sentido — minha retenção subiu 40%.',
-  },
-  {
-    name: 'Pedro A.',
-    role: 'Aprovado em Residência — FMUSP',
-    avatar: 'PA',
-    stars: 5,
-    text: 'R$1,91 por dia é menos que um café. E o ROI de passar na residência? Não tem comparação. Recomendo sem hesitar.',
-  },
+    text: 'Para o Enamed esse ano, vou estudar apenas o conteúdo da faculdade e com o Medlibre, isso se encaixa na minha rotina e no meu orçamento.',
+  }
 ]
 
 // ─── Animated counter ──────────────────────────────────────────────────────────

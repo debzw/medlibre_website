@@ -2,7 +2,6 @@ import { Metadata } from 'next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, User, ArrowRight } from 'lucide-react';
-import { AdBanner } from '@/components/AdBanner';
 import Link from 'next/link';
 import { blogPostsList } from './_data/posts';
 
@@ -38,11 +37,6 @@ export default function BlogPage() {
                 <p className="text-xl text-muted-foreground">Conteúdo estratégico para quem não quer perder tempo.</p>
             </div>
 
-            {/* Horizontal ad banner below header */}
-            <div className="max-w-4xl mx-auto mb-10">
-                <AdBanner variant="horizontal" slotId="4931237635" className="rounded-xl" />
-            </div>
-
             <div className="max-w-6xl mx-auto flex gap-10">
                 {/* Main content */}
                 <div className="flex-1 min-w-0 space-y-12">
@@ -75,10 +69,6 @@ export default function BlogPage() {
                     </div>
                 </div>
 
-                {/* Sidebar with ads */}
-                <aside className="hidden lg:flex flex-col gap-6 w-[160px] shrink-0">
-                    <AdBanner variant="sidebar" slotId="5722542728" />
-                </aside>
             </div>
         </div>
     );

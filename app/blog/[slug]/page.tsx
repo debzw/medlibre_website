@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, User, ArrowLeft } from 'lucide-react';
-import { AdBanner } from '@/components/AdBanner';
 import Link from 'next/link';
 import Image from 'next/image';
 import { blogPosts } from '../_data/posts';
@@ -129,9 +128,6 @@ export default async function BlogPostPage({ params }: Props) {
                             </div>
                             <h1 className="text-4xl md:text-5xl font-black tracking-tight">{post.title}</h1>
                         </div>
-
-                        {/* Horizontal ad below title */}
-                        <AdBanner variant="horizontal" slotId="4931237635" className="rounded-xl" />
 
                         <Card className="p-8">
                             <div className="prose prose-invert max-w-none space-y-4">
@@ -263,12 +259,6 @@ export default async function BlogPostPage({ params }: Props) {
                         </div>
                     </article>
 
-                    {/* Sidebar with ads */}
-                    <aside className="hidden lg:block w-[160px] shrink-0">
-                        <div className="sticky top-6">
-                            <AdBanner variant="sidebar" slotId="5722542728" />
-                        </div>
-                    </aside>
                 </div>
             </div>
         </>
