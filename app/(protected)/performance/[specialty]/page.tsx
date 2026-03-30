@@ -38,7 +38,9 @@ export default function SpecialtyPerformancePage() {
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div className="flex items-center gap-4">
-
+                    <div className="rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 p-3 shadow-lg shadow-purple-900/20">
+                        <BrainCircuit className="h-6 w-6 text-white" />
+                    </div>
                     <div>
                         <h1 className="text-2xl font-black tracking-tight text-foreground/90">{specialty}</h1>
                         <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em]">Diagnóstico de Performance</p>
@@ -78,7 +80,7 @@ export default function SpecialtyPerformancePage() {
                         />
 
                         {/* Future: Add AI detailed insights here */}
-                        <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-amber-500/5 to-yellow-500/5 p-6">
+                        <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 p-6">
                             <h4 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-2">Dica Estratégica</h4>
                             <p className="text-sm text-foreground/80 leading-relaxed">
                                 Foque nos temas marcados como <span className="text-yellow-500 font-bold">Pontos de Atenção</span>.

@@ -75,6 +75,9 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
   // Ref para acessar searchMeta atual em callbacks sem stale closure
   const searchMetaRef = useRef(searchMeta);
   useEffect(() => { searchMetaRef.current = searchMeta; }, [searchMeta]);
+  // Stale-fetch guard: incremented on each new fetch so a superseded async call
+  // (e.g. React StrictMode double-invocation) never commits its results.
+  const fetchCounterRef = useRef(0);
 
   const isSearchMode = !!(filters.search && filters.search.trim().length > 0);
 

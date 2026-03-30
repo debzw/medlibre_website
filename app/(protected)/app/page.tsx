@@ -4,8 +4,6 @@ import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FilterBar } from '@/components/FilterBar';
 import { QuestionCard } from '@/components/QuestionCard';
-import { AdBanner } from '@/components/AdBanner';
-import { AdModal } from '@/components/AdModal';
 import { LimitReachedCard } from '@/components/LimitReachedCard';
 import { EmptyState } from '@/components/EmptyState';
 import { LoadingState } from '@/components/LoadingState';
@@ -19,7 +17,6 @@ import { MetacognitiveFeedback } from '@/components/MetacognitiveFeedback';
 import { ArrowRight, ArrowLeft, TrendingUp, Search, Loader2 } from 'lucide-react';
 import { QuestionTimer, QuestionTimerRef } from '@/components/QuestionTimer';
 import { useToast } from '@/hooks/use-toast';
-import { AD_CONFIG } from '@/config/devMode';
 
 export default function QuestionsPage() {
     const searchParams = useSearchParams();
@@ -31,7 +28,6 @@ export default function QuestionsPage() {
     const [selectedEspecialidade, setSelectedEspecialidade] = useState(searchParams.get('especialidade') || 'all');
     const [selectedTemaUI, setSelectedTemaUI] = useState(searchParams.get('tema') || 'all');
     const [hideAnswered, setHideAnswered] = useState(true);
-    const [showAdModal, setShowAdModal] = useState(false);
     const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
     const [recentlyAnsweredId, setRecentlyAnsweredId] = useState<string | null>(null);
     const [questionHistory, setQuestionHistory] = useState<string[]>([]);
@@ -50,16 +46,8 @@ export default function QuestionsPage() {
     }, [searchParams]);
 
     const status = searchParams.get('status') as 'all_answered' | 'correct' | 'incorrect' | null;
-    const testAd = searchParams.get('test_ad');
     const sharedQuestionId = searchParams.get('questao');
     const { question: sharedQuestion, loading: sharedLoading } = useQuestionById(sharedQuestionId);
-
-    // Debug trigger for AdModal
-    useEffect(() => {
-        if (testAd) {
-            setShowAdModal(true);
-        }
-    }, [testAd]);
 
     const { options, loading: optionsLoading } = useFilterOptions();
     const {
@@ -87,9 +75,8 @@ export default function QuestionsPage() {
     const activeSearch = searchParams.get('search');
     const isSearchMode = !!(activeSearch && activeSearch.trim().length > 0);
 
-    const { user, userType, canAnswerMore, getRemainingQuestions, isFirstGuestInterstitial, markInterstitialAsShown } = useAuthContext();
+    const { user, userType, canAnswerMore, getRemainingQuestions } = useAuthContext();
     const { isQuestionAnswered: checkIfAnswered, getQuestionAttempts, saveSRSFeedback } = useQuestionHistory();
-    const questionsAnsweredSinceAd = useRef(0);
     const timerRef = useRef<QuestionTimerRef>(null);
 
     // ── Session tracking ──────────────────────────────────────────────────────
@@ -152,17 +139,6 @@ export default function QuestionsPage() {
         );
     }, [allQuestions, sharedQuestion, hideAnswered, checkIfAnswered, currentQuestionId, questionHistory, status]);
 
-    const showInterstitialAds = (
-        (userType === 'guest' && AD_CONFIG.interstitial.enabledForGuest && isFirstGuestInterstitial) ||
-        (userType === 'free' && AD_CONFIG.interstitial.enabledForFree)
-    ) && AD_CONFIG.enabled;
-
-    const showLateralAds = (
-        (userType === 'guest' && AD_CONFIG.lateral.enabledForGuest) ||
-        (userType === 'free' && AD_CONFIG.lateral.enabledForFree) ||
-        (userType === 'paid' && AD_CONFIG.lateral.enabledForPaid)
-    ) && AD_CONFIG.enabled;
-
     const currentQuestionIndex = currentQuestionId ? questions.findIndex(q => q.id === currentQuestionId) : -1;
     const currentQuestion = currentQuestionIndex >= 0 ? questions[currentQuestionIndex] : null;
 
@@ -199,7 +175,6 @@ export default function QuestionsPage() {
 
         if (!isQuestionAnswered) {
             // incrementUsage is handled by QuestionCard via the record_answer RPC result
-            questionsAnsweredSinceAd.current += 1;
             sessionQuestionsAttempted.current += 1;
             if (isCorrect) sessionQuestionsCorrect.current += 1;
         }
@@ -216,14 +191,7 @@ export default function QuestionsPage() {
     };
 
     const handleNextClick = () => {
-        const shouldShowAd = showInterstitialAds && questionsAnsweredSinceAd.current >= AD_CONFIG.interstitial.frequency;
-
-        if (shouldShowAd) {
-            setShowAdModal(true);
-            questionsAnsweredSinceAd.current = 0;
-        } else {
-            handleNextQuestion();
-        }
+        handleNextQuestion();
     };
 
     const handlePreviousQuestion = () => {
@@ -297,12 +265,6 @@ export default function QuestionsPage() {
         setHideAnswered(v);
         resetFilters();
     }, [userType, router]);
-
-    const handleAdClose = () => {
-        markInterstitialAsShown();
-        setShowAdModal(false);
-        handleNextQuestion();
-    };
 
     const resetFilters = () => {
         setCurrentQuestionId(null);
@@ -539,22 +501,7 @@ export default function QuestionsPage() {
                     )}
                 </div>
 
-                {/* Sidebar ads - desktop only */}
-                {showLateralAds && (
-                    <aside className="hidden lg:block w-[200px] shrink-0">
-                        <div className="sticky top-24">
-                            <AdBanner variant="sidebar" slotId="8374377363" />
-                        </div>
-                    </aside>
-                )}
             </div>
-
-            {/* Ad Modal */}
-            <AdModal
-                isOpen={showAdModal}
-                onClose={handleAdClose}
-                isLoginCTA={(userType === 'guest' && isFirstGuestInterstitial) || testAd === 'cta'}
-            />
         </div>
     );
 }

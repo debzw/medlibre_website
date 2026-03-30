@@ -4,7 +4,6 @@ import './globals.css';
 import { Providers } from './providers';
 import { Footer } from '@/components/Footer';
 import { Header } from '@/components/Header';
-import { CookieBanner } from '@/components/CookieBanner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -83,21 +82,13 @@ export default function RootLayout({
 }) {
     return (
         <html lang="pt-BR" suppressHydrationWarning>
-            <head>
-                {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-                <script
-                    async
-                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3534264996279802"
-                    crossOrigin="anonymous"
-                />
-            </head>
+            <head></head>
             <body className={`${inter.className} min-h-screen flex flex-col`}>
                 <Providers>
                     <div className="flex-1 flex flex-col">
                         <Header />
                         {children}
                     </div>
-                    <CookieBanner />
                     <Footer />
                 </Providers>
             </body>
