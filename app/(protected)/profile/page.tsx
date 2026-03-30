@@ -21,7 +21,8 @@ import {
     GraduationCap,
     Clock,
     UserCircle,
-    School
+    School,
+    X,
 } from "lucide-react";
 import {
     Select,
@@ -35,6 +36,99 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect, useMemo } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ─── Cancellation modal ─────────────────────────────────────────────────────
+
+interface CancelDialogProps {
+    isRefundWindow: boolean;
+    onConfirm: (feedback: string) => Promise<void>;
+    onClose: () => void;
+}
+
+function CancelDialog({ isRefundWindow, onConfirm, onClose }: CancelDialogProps) {
+    const [feedback, setFeedback] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleConfirm = async () => {
+        setLoading(true);
+        await onConfirm(feedback);
+        setLoading(false);
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-md rounded-2xl bg-card border border-border shadow-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="font-semibold text-lg text-foreground">
+                        {isRefundWindow ? 'Solicitar reembolso' : 'Cancelar assinatura'}
+                    </h2>
+                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                    {isRefundWindow
+                        ? 'Você está dentro do prazo de 7 dias. Enviaremos sua solicitação ao nosso time e entraremos em contato em breve.'
+                        : 'Seu acesso Premium continuará ativo até o fim do período pago. Após isso, você voltará ao plano gratuito.'}
+                </p>
+
+                <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-foreground">
+                        {isRefundWindow ? 'Motivo do cancelamento' : 'Gostaria de deixar um feedback? (opcional)'}
+                    </label>
+                    <textarea
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        placeholder={isRefundWindow
+                            ? 'Conte-nos o motivo para podermos melhorar...'
+                            : 'O que poderia ter sido diferente?'}
+                        rows={3}
+                        required={isRefundWindow}
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                    {isRefundWindow && (
+                        <p className="text-xs text-muted-foreground">Obrigatório para solicitação de reembolso.</p>
+                    )}
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                    <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+                        Voltar
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={handleConfirm}
+                        disabled={loading || (isRefundWindow && !feedback.trim())}
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+async function fetchSubscriptionCreatedAt(userId: string): Promise<Date | null> {
+    const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    const { data } = await supabase
+        .from('subscriptions')
+        .select('created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    return data?.created_at ? new Date(data.created_at) : null;
+}
+
+// ─── Main page ──────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -47,6 +141,12 @@ export default function ProfilePage() {
     const [graduationYear, setGraduationYear] = useState(profile?.graduation_year?.toString() || "");
     const [university, setUniversity] = useState(profile?.university || "");
     const [isSaving, setIsSaving] = useState(false);
+
+    // Cancellation state
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [isRefundWindow, setIsRefundWindow] = useState(false);
+    const [cancelResult, setCancelResult] = useState<'refund' | 'cancel_future' | null>(null);
+    const [loadingCancel, setLoadingCancel] = useState(false);
 
     useEffect(() => {
         if (profile) {
@@ -84,8 +184,10 @@ export default function ProfilePage() {
     }
 
     const isPremium = userType === 'paid';
+    const isCancelled = (profile as Record<string, unknown> | null)?.subscription_status === 'cancelled';
     const planName = isPremium ? "Premium" : "Gratuito";
     const joinDate = new Date(user.created_at || "").toLocaleDateString('pt-BR');
+    const tierExpiry = (profile as Record<string, unknown> | null)?.tier_expiry as string | undefined;
 
     const handleSaveProfile = async () => {
         setIsSaving(true);
@@ -129,17 +231,67 @@ export default function ProfilePage() {
         }
     };
 
-    const handleManageSubscription = () => {
-        if (isPremium) {
-            console.log("Open Customer Portal");
-            alert("Redirecionando para o portal do cliente (Asaas)...");
-        } else {
+    const handleManageSubscription = async () => {
+        if (!isPremium) {
             router.push("/pricing");
+            return;
         }
+
+        setLoadingCancel(true);
+        const subCreatedAt = await fetchSubscriptionCreatedAt(user.id);
+        setLoadingCancel(false);
+
+        const now = new Date();
+        const daysSince = subCreatedAt
+            ? (now.getTime() - subCreatedAt.getTime()) / (1000 * 60 * 60 * 24)
+            : Infinity;
+
+        setIsRefundWindow(daysSince <= 7);
+        setCancelDialogOpen(true);
+    };
+
+    const handleCancelConfirm = async (feedback: string) => {
+        const session = await createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        ).auth.getSession();
+        const token = session.data.session?.access_token;
+        if (!token) return;
+
+        const res = await fetch('/api/asaas/cancel', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ feedback }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            toast({
+                title: "Erro",
+                description: data.error ?? 'Erro ao processar cancelamento.',
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setCancelDialogOpen(false);
+        setCancelResult(data.type as 'refund' | 'cancel_future');
     };
 
     return (
         <div className="container max-w-4xl mx-auto py-10 px-4 space-y-8">
+            {cancelDialogOpen && (
+                <CancelDialog
+                    isRefundWindow={isRefundWindow}
+                    onConfirm={handleCancelConfirm}
+                    onClose={() => setCancelDialogOpen(false)}
+                />
+            )}
+
             <div className="flex items-center gap-4">
                 <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
                     {profile?.avatar_url ? (
@@ -328,12 +480,36 @@ export default function ProfilePage() {
                             <CardTitle className="flex items-center justify-between">
                                 <span>Plano Atual</span>
                                 <Badge variant={isPremium ? "default" : "secondary"}>
-                                    {planName}
+                                    {isCancelled && isPremium ? "Cancelado" : planName}
                                 </Badge>
                             </CardTitle>
                             <CardDescription>Detalhes da sua assinatura e faturamento.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
+
+                            {/* ── Cancellation result messages ── */}
+                            {cancelResult === 'refund' && (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800 text-sm flex gap-3 text-blue-800 dark:text-blue-200">
+                                    <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <p>
+                                        Sua solicitação foi enviada ao nosso time. Em breve entraremos em contato com mais informações via email.
+                                    </p>
+                                </div>
+                            )}
+                            {cancelResult === 'cancel_future' && (
+                                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800 text-sm flex gap-3 text-green-800 dark:text-green-200">
+                                    <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
+                                    <div className="space-y-1">
+                                        <p className="font-semibold">Cancelamento concluído.</p>
+                                        <p>
+                                            Os recursos Premium continuarão ativos até o fim do período pago
+                                            {tierExpiry ? ` (${new Date(tierExpiry).toLocaleDateString('pt-BR')})` : ''}.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Plan card ── */}
                             <div className="flex items-center justify-between p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
                                 <div className="flex items-center gap-3">
                                     <div className={`p-2 rounded-full ${isPremium ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'}`}>
@@ -342,15 +518,13 @@ export default function ProfilePage() {
                                     <div>
                                         <p className="font-semibold">Plano {planName}</p>
                                         <p className="text-sm text-muted-foreground">
-                                            {isPremium
-                                                ? "Acesso ilimitado a todas as funcionalidades."
-                                                : "Funcionalidades limitadas."}
+                                            {isPremium && !isCancelled && "Acesso ilimitado a todas as funcionalidades."}
+                                            {isPremium && isCancelled && tierExpiry && `Acesso ativo até ${new Date(tierExpiry).toLocaleDateString('pt-BR')}.`}
+                                            {!isPremium && "Funcionalidades limitadas."}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    {isPremium && <CheckCircle2 className="h-5 w-5 text-green-500" />}
-                                </div>
+                                {isPremium && <CheckCircle2 className="h-5 w-5 text-green-500" />}
                             </div>
 
                             {!isPremium && (
@@ -362,28 +536,32 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
                             )}
-
                         </CardContent>
+
                         <CardFooter className="flex justify-end gap-3 border-t bg-muted/20 px-6 py-4">
-                            {isPremium ? (
-                                <Button variant="outline" onClick={handleManageSubscription}>
-                                    Gerenciar Assinatura
+                            {isPremium && !isCancelled && cancelResult === null ? (
+                                <Button
+                                    variant="outline"
+                                    onClick={handleManageSubscription}
+                                    disabled={loadingCancel}
+                                >
+                                    {loadingCancel
+                                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando...</>
+                                        : 'Gerenciar Assinatura'}
                                 </Button>
-                            ) : (
+                            ) : !isPremium ? (
                                 <Link href="/pricing">
                                     <Button className="w-full sm:w-auto">
                                         Fazer Upgrade Agora
                                     </Button>
                                 </Link>
-                            )}
+                            ) : null}
                         </CardFooter>
                     </Card>
 
-                    {isPremium && (
-                        <p className="text-center text-xs text-muted-foreground">
-                            Sua assinatura é processada e gerenciada de forma segura via Stripe ou Asaas.
-                        </p>
-                    )}
+                    <p className="text-center text-xs text-muted-foreground">
+                        Pagamentos processados com segurança pela <span className="font-medium text-foreground">Asaas</span>.
+                    </p>
                 </TabsContent>
             </Tabs>
         </div>

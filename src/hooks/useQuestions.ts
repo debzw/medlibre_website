@@ -75,6 +75,9 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
   // Ref para acessar searchMeta atual em callbacks sem stale closure
   const searchMetaRef = useRef(searchMeta);
   useEffect(() => { searchMetaRef.current = searchMeta; }, [searchMeta]);
+  // Stale-fetch guard: incremented on each new fetch so a superseded async call
+  // (e.g. React StrictMode double-invocation) never commits its results.
+  const fetchCounterRef = useRef(0);
 
   const isSearchMode = !!(filters.search && filters.search.trim().length > 0);
 
@@ -194,6 +197,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
 
   // ─── Primary fetch (resets state) ────────────────────────────────────────
   const fetchQuestions = async () => {
+    const myFetchId = ++fetchCounterRef.current;
     const _tFetch = performance.now();
     const _fetchPath = user ? 'SRS-RPC' : 'guest';
     console.log(`[PERF] QUESTIONS: fetchQuestions start (path=${_fetchPath}) → ${_tFetch.toFixed(0)}ms`);
@@ -336,6 +340,7 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           }
         }
 
+        if (myFetchId !== fetchCounterRef.current) return; // superseded fetch
         if (fetchError) {
           setError(fetchError.message);
         } else {
@@ -352,10 +357,12 @@ export function useQuestions(filters: UseQuestionsOptions = {}) {
           await delay(500 * attempt);
           continue;
         }
+        if (myFetchId !== fetchCounterRef.current) return; // superseded fetch
         setError('Erro ao carregar questões');
         break;
       }
     }
+    if (myFetchId !== fetchCounterRef.current) return; // superseded fetch
     console.log(`[PERF] QUESTIONS: loading=false → ${performance.now().toFixed(0)}ms`);
     setLoading(false);
   };

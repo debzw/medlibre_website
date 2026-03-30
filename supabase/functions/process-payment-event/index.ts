@@ -13,9 +13,10 @@ const resend = Deno.env.get('RESEND_API_KEY')
 const FROM = 'MedLibre <noreply@medlibre.com.br>'
 
 Deno.serve(async (req) => {
-  // Called only from Next.js webhook route — validate bearer
+  // Called only from Next.js webhook route — validate internal secret
   const auth = req.headers.get('Authorization') ?? ''
-  if (auth !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) {
+  const expectedSecret = Deno.env.get('CRON_SECRET') ?? ''
+  if (!expectedSecret || auth !== `Bearer ${expectedSecret}`) {
     return new Response('Unauthorized', { status: 401 })
   }
 
@@ -42,7 +43,7 @@ Deno.serve(async (req) => {
   // Find user by asaas_subscription_id
   const { data: profile, error: profileErr } = await supabase
     .from('user_profiles')
-    .select('id')
+    .select('id, billing_cycle, cancel_at_period_end')
     .eq('asaas_subscription_id', asaasSubscriptionId)
     .maybeSingle()
 
@@ -63,13 +64,7 @@ Deno.serve(async (req) => {
   const value = payment?.value as number | undefined
   const boletoUrl = (payment?.bankSlipUrl ?? payment?.invoiceUrl) as string | undefined
 
-  // Determine billing_cycle from subscription
-  const { data: upProfile } = await supabase
-    .from('user_profiles')
-    .select('billing_cycle')
-    .eq('id', userId)
-    .single()
-  const isAnnual = upProfile?.billing_cycle === 'annual'
+  const isAnnual = profile.billing_cycle === 'annual'
   const daysGrace = isAnnual ? 370 : 35
   const newExpiry = new Date(Date.now() + daysGrace * 24 * 60 * 60 * 1000).toISOString()
 
@@ -83,11 +78,23 @@ Deno.serve(async (req) => {
       }).eq('id', userId)
 
       if (paymentId) {
+        // Look up the existing subscriptions row to preserve the exact plan name
+        // (founders / early_adopter would be lost if we only use billing_cycle)
+        const { data: existingRow } = await supabase
+          .from('subscriptions')
+          .select('plan')
+          .eq('asaas_subscription_id', asaasSubscriptionId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+
+        const resolvedPlan = existingRow?.plan ?? (isAnnual ? 'annual' : 'monthly')
+
         await supabase.from('subscriptions').upsert({
           user_id: userId,
           asaas_subscription_id: asaasSubscriptionId,
           asaas_payment_id: paymentId,
-          plan: isAnnual ? 'annual' : 'monthly',
+          plan: resolvedPlan,
           amount_cents: Math.round((value ?? 0) * 100),
           status: 'confirmed',
           payment_method: billingType,
@@ -144,13 +151,14 @@ Deno.serve(async (req) => {
     }
 
     case 'PAYMENT_REFUNDED':
-    case 'PAYMENT_DELETED':
-    case 'SUBSCRIPTION_DELETED': {
+    case 'PAYMENT_DELETED': {
+      // Always revoke immediately — admin-initiated refund
       await supabase.from('user_profiles').update({
         tier: 'free',
         tier_expiry: new Date().toISOString(),
         subscription_status: 'cancelled',
         asaas_subscription_id: null,
+        cancel_at_period_end: false,
       }).eq('id', userId)
 
       if (paymentId) {
@@ -180,6 +188,48 @@ Deno.serve(async (req) => {
               <p>Se foi um engano, você pode assinar novamente a qualquer momento em <a href="https://medlibre.com.br/pricing">medlibre.com.br/pricing</a>.</p>
             `,
           }).catch(console.error)
+        }
+      }
+      break
+    }
+
+    case 'SUBSCRIPTION_DELETED': {
+      // If user triggered "cancel future invoices" (cancel_at_period_end = true):
+      //   → only clear the subscription ID; tier_expiry and tier are preserved
+      //   → the check-subscriptions cron handles natural expiry
+      //
+      // If admin deleted the subscription directly (cancel_at_period_end = false):
+      //   → immediate full revocation (same as PAYMENT_REFUNDED)
+      if (profile.cancel_at_period_end) {
+        await supabase.from('user_profiles').update({
+          subscription_status: 'cancelled',
+          asaas_subscription_id: null,
+          // cancel_at_period_end stays true so cron knows not to re-activate
+        }).eq('id', userId)
+      } else {
+        await supabase.from('user_profiles').update({
+          tier: 'free',
+          tier_expiry: new Date().toISOString(),
+          subscription_status: 'cancelled',
+          asaas_subscription_id: null,
+          cancel_at_period_end: false,
+        }).eq('id', userId)
+
+        // Send cancellation email for admin-initiated deletions
+        if (resend) {
+          const { data: { user } } = await supabase.auth.admin.getUserById(userId)
+          if (user?.email) {
+            await resend.emails.send({
+              from: FROM,
+              to: [user.email],
+              subject: 'Assinatura cancelada — MedLibre Premium',
+              html: `
+                <h2>Sua assinatura foi cancelada</h2>
+                <p>Seu acesso Premium ao MedLibre foi encerrado. Você voltou para o plano gratuito.</p>
+                <p>Se foi um engano, você pode assinar novamente a qualquer momento em <a href="https://medlibre.com.br/pricing">medlibre.com.br/pricing</a>.</p>
+              `,
+            }).catch(console.error)
+          }
         }
       }
       break

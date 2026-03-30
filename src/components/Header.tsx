@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { LogIn, LogOut, User, Crown, BarChart3, Info, Target, Sparkles } from 'lucide-react';
-import { ThemeToggle } from '@/components/ThemeToggle';
+
 import { ProfileCompletionModal } from '@/components/modals/ProfileCompletionModal';
 import type { UserProfile } from '@/types/database';
 
@@ -87,10 +87,7 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Theme toggle - Hidden on mobile, visible on desktop */}
-          <div className="hidden md:flex">
-            <ThemeToggle />
-          </div>
+          {/* Theme toggle removed */}
 
           {/* Usage indicator */}
           {showLimit && (
@@ -106,7 +103,7 @@ export function Header() {
               {userType === 'paid' && (
                 <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
                   <Crown className="w-4 h-4" />
-                  <span>Premium Beta</span>
+                  <span>Premium</span>
                 </div>
               )}
 

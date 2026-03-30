@@ -65,6 +65,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Boleto não disponível.' }, { status: 400 })
   }
 
+  if (paymentMethod === 'CREDIT_CARD' && (!cardToken || !holderInfo)) {
+    return NextResponse.json({ error: 'Dados do cartão são obrigatórios.' }, { status: 400 })
+  }
+
   if (!PLAN_PRICES[plan]) {
     return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
   }
@@ -129,9 +133,10 @@ export async function POST(req: NextRequest) {
     finalPriceCents = promo.price_cents
   }
 
-  // Enforce R$249 price floor
+  // Enforce R$249 price floor — only when a coupon or promotion discount was applied
+  // (prevents discounting annual below the founders price; does not affect base plan prices)
   const PRICE_FLOOR_CENTS = 24900
-  if (finalPriceCents < PRICE_FLOOR_CENTS) {
+  if ((couponCode || promotionId) && finalPriceCents < PRICE_FLOOR_CENTS) {
     finalPriceCents = PRICE_FLOOR_CENTS
   }
 
