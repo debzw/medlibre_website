@@ -17,11 +17,40 @@ export async function POST(request: NextRequest) {
     // Verifica se o perfil já existe (evita duplicatas em race conditions)
     const { data: existing } = await supabaseAdmin
       .from('user_profiles')
-      .select('id')
+      .select('*')
       .eq('id', userId)
       .maybeSingle();
 
     if (existing) {
+      // Backfill personal info if the DB trigger ran before GoTrue populated metadata
+      const needsUpdate =
+        (!existing.full_name && full_name) ||
+        (!existing.avatar_url && avatar_url) ||
+        (!existing.email && email) ||
+        (!existing.locale && locale);
+
+      if (needsUpdate) {
+        const updates: Record<string, string | null> = {};
+        if (!existing.full_name && full_name) updates.full_name = full_name;
+        if (!existing.avatar_url && avatar_url) updates.avatar_url = avatar_url;
+        if (!existing.email && email) updates.email = email;
+        if (!existing.locale && locale) updates.locale = locale;
+
+        const { data: updated, error: updateError } = await supabaseAdmin
+          .from('user_profiles')
+          .update(updates)
+          .eq('id', userId)
+          .select('*')
+          .single();
+
+        if (updateError) {
+          console.error('[create-profile] erro ao atualizar perfil existente:', updateError);
+          return NextResponse.json({ profile: existing, created: false });
+        }
+
+        return NextResponse.json({ profile: updated, created: false });
+      }
+
       return NextResponse.json({ profile: existing, created: false });
     }
 
