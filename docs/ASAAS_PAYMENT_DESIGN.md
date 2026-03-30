@@ -1,371 +1,285 @@
-# Asaas Payment Integration — Design Document
+# Asaas Payment Integration — MedLibre
 
-> Status: **APPROVED** · Reviewed via multi-agent brainstorming · 2026-03-23
-
----
-
-## Understanding Summary
-
-- **What:** Full Asaas payment integration — monthly + annual subscriptions, PIX + boleto + card, Fundadores promo (R$249/ano, 500 slots), influencer coupon codes, webhook pipeline
-- **Why:** Beta ends April 1 2026; extended to April 30 for existing users; new signups get 1-month free trial; need to accept payments before anyone gets downgraded
-- **Who:** Brazilian medical students preparing for residency exams (ENARE)
-- **Stack:** Next.js 15 App Router, Supabase, Vercel, Asaas API, TypeScript, Tailwind, Radix UI
-- **Explicit non-goals (this phase):** Modo Simulado, heatmaps, Premium+ tier, B2B billing, admin panel
+> Design approved: 2026-03-23 · Last updated: 2026-03-29
 
 ---
 
-## Assumptions
+## Overview
 
-- Asaas sandbox credentials obtained before development begins
-- Hosting is Vercel — Next.js API routes supported, 10s default timeout
-- `NEXT_PUBLIC_APP_URL` = `https://medlibre.com.br`
-- `ASAAS_WEBHOOK_TOKEN` stored as server-only env var
-- `ASAAS_API_KEY` stored as server-only env var, never exposed to client
-- `ASAAS_MOCK=true` only valid when `NODE_ENV !== 'production'`
-- PIX + boleto subscriptions: tier stays `paid` while charge is `PENDING`; downgrade only when `tier_expiry` passes naturally
-- Annual tier_expiry = now() + 370 days (5-day grace); monthly = now() + 35 days (5-day grace)
+MedLibre uses **Asaas** as its payment processor (Brazilian gateway). Users never leave the site — checkout is hosted on MedLibre with a tokenized form. Asaas handles PIX, credit card, and boleto.
+
+The integration has four moving parts:
+
+```
+Browser → Next.js API routes → Asaas API
+                ↑
+Asaas Webhook → Next.js /api/asaas/webhook → Supabase Edge Function
+                                                (process-payment-event)
+                                                        ↑
+                              Supabase Cron ← check-subscriptions (daily)
+```
 
 ---
 
-## Plans & Pricing
+## Plans & Prices
 
-| Plan | Preço | Total Anual | Asaas billingCycle |
+| Plan | Price | Cycle | Notes |
 |---|---|---|---|
-| Mensal — Sem Compromisso | R$79,90/mês | R$958,80 | `MONTHLY` |
-| Anual — Acesso Completo | R$69,90×12 | R$699,00 (PIX/Boleto à vista) | `YEARLY` |
-| Influenciador (25% off) | R$59,90/mês | — | `MONTHLY` (via coupon) |
-| Fundadores (promo) | — | R$249,00 | `YEARLY` |
-| Early Adopter (promo) | — | R$349,00 | `YEARLY` |
+| Mensal | R$ 79,90/mês | MONTHLY | No lock-in |
+| Anual | R$ 699,00/ano | YEARLY | ~R$ 58,25/mês · save 26% |
+| Fundadores | R$ 249,00/ano | YEARLY | 500 slots · 30-day promo |
+| Early Adopter | R$ 349,00/ano | YEARLY | 60-day promo |
 
-**Rules:** Never price below R$249/ano. Always show R$79,90 riscado next to R$69,90 on annual card.
+**Price floor:** R$ 249,00 (enforced server-side — no coupon or promo can go below).
+
+**Coupon + promo stacking:** forbidden. Only one discount per checkout.
 
 ---
 
 ## Database Schema
 
-### 1. `user_profiles` additions
+### `user_profiles` — payment columns
 
-```sql
-ALTER TABLE public.user_profiles
-  ADD COLUMN IF NOT EXISTS asaas_customer_id TEXT,
-  ADD COLUMN IF NOT EXISTS asaas_subscription_id TEXT,
-  ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'none',
-  -- 'none' | 'pending' | 'active' | 'overdue' | 'cancelled'
-  ADD COLUMN IF NOT EXISTS billing_cycle TEXT;
-  -- 'monthly' | 'annual' | NULL
-```
+| Column | Type | Description |
+|---|---|---|
+| `asaas_customer_id` | TEXT | Asaas customer ID (`cus_xxx`) |
+| `asaas_subscription_id` | TEXT | Active Asaas subscription ID (`sub_xxx`) — NULL after cancellation |
+| `subscription_status` | TEXT | `none` · `pending` · `active` · `overdue` · `cancelled` |
+| `billing_cycle` | TEXT | `monthly` · `annual` · NULL |
+| `tier_expiry` | TIMESTAMPTZ | When premium access expires. Used by cron to downgrade. |
+| `cancel_at_period_end` | BOOLEAN | True when user cancelled future charges but access still active until `tier_expiry` |
+| `beta_extension_claimed` | BOOLEAN | Whether beta extension was applied |
 
-### 2. `subscriptions` table (history + dead-letter)
+### `subscriptions` — payment history
 
-```sql
-CREATE TABLE public.subscriptions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES public.user_profiles(id) ON DELETE CASCADE,
-  asaas_subscription_id TEXT NOT NULL,
-  asaas_payment_id TEXT UNIQUE,        -- UNIQUE for idempotency
-  plan TEXT NOT NULL,                  -- 'monthly'|'annual'|'founders'|'early_adopter'
-  amount_cents INTEGER NOT NULL,
-  status TEXT NOT NULL,
-  payment_method TEXT,                 -- 'CREDIT_CARD'|'PIX'|'BOLETO'
-  event_type TEXT,
-  boleto_url TEXT,                     -- persisted for boleto recovery
-  coupon_id UUID REFERENCES public.coupons(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
--- RLS: users SELECT own rows; service_role INSERT/UPDATE
-```
+Each confirmed (or attempted) payment creates a row. The `asaas_payment_id` column has a `UNIQUE` constraint to enforce idempotency at the DB level.
 
-### 3. `webhook_events` table (dead-letter queue)
+| Column | Description |
+|---|---|
+| `asaas_subscription_id` | Links back to `user_profiles` |
+| `asaas_payment_id` | Unique per payment event — prevents duplicate processing |
+| `plan` | `monthly` · `annual` · `founders` · `early_adopter` |
+| `status` | `pending` · `confirmed` · `overdue` · `refunded` · `cancelled` |
+| `payment_method` | `CREDIT_CARD` · `PIX` · `BOLETO` |
+| `boleto_url` | Boleto/invoice URL for pending boleto payments |
+| `coupon_id` | FK to `coupons` if applied |
+| `created_at` | Used to calculate 7-day refund window and 14-day revocation |
 
-```sql
-CREATE TABLE public.webhook_events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_type TEXT NOT NULL,
-  payload JSONB NOT NULL,
-  processed BOOLEAN DEFAULT false,
-  error TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  processed_at TIMESTAMPTZ
-);
--- RLS: service_role only
-```
+### `cancellation_requests`
 
-### 4. `promotions` table
+Records every user-initiated cancellation. Admin reviews refund requests here.
 
-```sql
-CREATE TABLE public.promotions (
-  id TEXT PRIMARY KEY,           -- 'founders' | 'early_adopter'
-  label TEXT NOT NULL,
-  price_cents INTEGER NOT NULL,
-  slots_total INTEGER,
-  slots_used INTEGER DEFAULT 0,
-  active_until TIMESTAMPTZ,
-  active BOOLEAN DEFAULT true
-);
+| Column | Description |
+|---|---|
+| `request_type` | `refund` (≤7 days) · `cancel_future` (>7 days) |
+| `feedback` | User's cancellation reason (required for refund, optional for cancel_future) |
+| `status` | `pending` · `processed` · `rejected` |
+| `processed_at` / `processed_by` | Admin fills these when handling |
 
-INSERT INTO public.promotions VALUES
-  ('founders', 'Fundadores', 24900, 500, 0, now() + interval '30 days', true),
-  ('early_adopter', 'Early Adopter', 34900, NULL, 0, now() + interval '60 days', true);
-```
+### `coupons`
 
-### 5. `coupons` table
+Influencer/partner codes. Access only via `validate_coupon` RPC — no direct SELECT for authenticated users.
 
-```sql
-CREATE TABLE public.coupons (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code TEXT UNIQUE NOT NULL,
-  label TEXT,
-  influencer_name TEXT,
-  discount_type TEXT NOT NULL,         -- 'percent' | 'fixed_cents'
-  discount_value INTEGER NOT NULL,
-  applicable_plans TEXT[] DEFAULT ARRAY['monthly','annual'],
-  max_uses INTEGER,                    -- NULL = unlimited
-  uses_count INTEGER DEFAULT 0,
-  valid_from TIMESTAMPTZ DEFAULT now(),
-  valid_until TIMESTAMPTZ,             -- NULL = no expiry
-  active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
--- RLS: NO direct SELECT for authenticated users
--- Access only via server-side RPC validate_coupon(code, plan)
-```
+### `promotions`
 
-### 6. Beta extension migration
+Time/slot-based offers (Founders, Early Adopter). `slots_used` is incremented atomically via `decrement_promotion_slot` RPC.
 
-Beta extension to 2026-04-30 is **NOT automatic** — requires email validation.
+### `webhook_events`
 
-**Flow:**
-1. Send validation email to all current beta users (tier='paid', tier_expiry='2026-04-01')
-2. Email contains a signed link: `/api/beta/confirm-extension?token=<jwt>`
-3. User clicks → API route verifies JWT → sets `tier_expiry = '2026-04-30'`
-4. Users who do NOT click are downgraded naturally on April 1 by `check-subscriptions`
-
-```sql
--- Add column to track whether beta extension was claimed
-ALTER TABLE public.user_profiles
-  ADD COLUMN IF NOT EXISTS beta_extension_claimed BOOLEAN DEFAULT false;
-
--- New users: 1 month free trial (automatic, no validation needed)
-CREATE OR REPLACE FUNCTION public.handle_new_user() ...
-  tier_expiry = now() + interval '1 month',
-  subscription_status = 'none',
-  beta_extension_claimed = false
-```
-
-**New API route:** `GET /api/beta/confirm-extension?token=<jwt>`
-- Validates JWT (signed with `SUPABASE_JWT_SECRET`, contains `user_id`, expires April 1)
-- Sets `tier_expiry = '2026-04-30'`, `beta_extension_claimed = true`
-- Redirects to `/dashboard?beta=extended`
+Dead-letter queue. Any webhook that fails processing lands here and is retried by the `check-subscriptions` cron every 5 minutes.
 
 ---
 
-## API Routes (Next.js — `src/app/api/asaas/`)
-
-### `POST /api/asaas/checkout`
+## Checkout Flow (step-by-step)
 
 ```
-Auth: required
-Body: { plan, paymentMethod, cardToken?, billingInfo, couponCode?, promotionId? }
-
-1. Guard: if user_profiles.asaas_subscription_id IS NOT NULL → return 409 (already subscribed)
-2. Validate coupon OR promotion (not both — stacking forbidden)
-3. Check promotion slots (SELECT FOR UPDATE on promotions row)
-4. Calculate final price; enforce R$249 floor
-5. Create/upsert Asaas customer by email
-6. Write asaas_customer_id + subscription_status='pending' to user_profiles
-7. Create Asaas subscription → get asaas_subscription_id
-8. Write asaas_subscription_id + billing_cycle to user_profiles
-9. Decrement promotions.slots_used (if promo) via RPC
-10. Increment coupons.uses_count (if coupon) via RPC
-11. Insert into subscriptions (status='pending', boleto_url if applicable)
-12. Return { subscriptionId, status, pixQrCode?, boletoUrl?, nextDueDate }
-```
-
-### `POST /api/asaas/validate-coupon`
-
-```
-Auth: none (rate-limited — 10 req/min per IP)
-Body: { code, plan }
-→ Calls server-side validate_coupon(code, plan) RPC
-→ Returns { valid, discountType, discountValue, finalPriceCents, label }
-```
-
-### `GET /api/asaas/subscription`
-
-```
-Auth: required
-→ Reads from user_profiles (NOT a live Asaas API call)
-→ Returns { status, nextDueDate, billingCycle, plan, boletoUrl? }
-```
-
-### `POST /api/asaas/change-plan`
-
-```
-Auth: required
-Body: { newPlan: 'annual' }
-→ Cancels existing Asaas subscription
-→ Creates new annual subscription
-→ Updates user_profiles.billing_cycle, asaas_subscription_id
-→ Returns { subscriptionId, nextDueDate }
-```
-
-### `POST /api/webhooks/asaas`
-
-```
-Auth: header asaas-access-token validated via constant-time compare
-→ Insert raw payload into webhook_events (processed=false)
-→ Call Supabase Edge Function process-payment-event
-→ On Edge Function success: mark webhook_events.processed=true
-→ On Edge Function failure: mark webhook_events.error, leave processed=false
-→ Return 200 immediately (Asaas expects fast response)
+1. User selects plan on /pricing
+2. CheckoutModal opens (hosted on MedLibre)
+3. User enters billing info + payment method
+4. POST /api/asaas/checkout
+   a. Validate JWT → get user
+   b. Idempotency check: already has asaas_subscription_id? → 409
+   c. Validate coupon (server-side RPC) or promo slot
+   d. Enforce price floor (R$249)
+   e. findOrCreateCustomer on Asaas (lookup by email first)
+   f. Write asaas_customer_id + subscription_status='pending' to DB
+      (BEFORE calling Asaas — prevents race if browser closes)
+   g. createSubscription on Asaas
+   h. Write asaas_subscription_id + billing_cycle to DB
+   i. Decrement promo slot / increment coupon uses (atomic RPCs)
+   j. Fetch first payment details (PIX QR / boleto URL)
+   k. Insert subscriptions row
+   l. Return PIX QR code or boleto URL to browser
+5. Browser shows PIX QR or boleto link
+6. User pays → Asaas sends webhook
 ```
 
 ---
 
-## Supabase Edge Functions
+## Webhook Flow
 
-### `process-payment-event` (new)
+**Entry point:** `POST /api/asaas/webhook` (Next.js route, not shown in code — validates Asaas signature, writes to `webhook_events`, then calls `process-payment-event` Edge Function).
+
+### `process-payment-event` Edge Function
+
+Handles these Asaas event types:
+
+#### `PAYMENT_CONFIRMED` / `PAYMENT_RECEIVED`
+- Sets `tier = 'paid'`, `subscription_status = 'active'`
+- Sets `tier_expiry`:
+  - Annual: `now() + 370 days` (365 + 5 grace)
+  - Monthly: `now() + 35 days` (30 + 5 grace)
+- Upserts `subscriptions` row (idempotent via `asaas_payment_id`)
+
+#### `PAYMENT_AWAITING_RISK_ANALYSIS`
+- Sets `subscription_status = 'pending'` only (no tier change)
+
+#### `PAYMENT_OVERDUE`
+- Sets `subscription_status = 'overdue'`
+- Sends overdue warning email via Resend
+
+#### `PAYMENT_REFUNDED` / `PAYMENT_DELETED`
+- Immediate revocation: `tier = 'free'`, `tier_expiry = now()`, `subscription_status = 'cancelled'`
+- Clears `asaas_subscription_id`
+- Sends cancellation email
+
+#### `SUBSCRIPTION_DELETED`
+- **Checks `cancel_at_period_end` flag:**
+  - `true` (user-initiated graceful cancel):
+    → Sets `subscription_status = 'cancelled'`, clears `asaas_subscription_id`
+    → Does NOT touch `tier` or `tier_expiry` — access preserved until natural expiry
+    → `check-subscriptions` cron handles downgrade when `tier_expiry` passes
+  - `false` (admin-initiated delete):
+    → Immediate full revocation (same as PAYMENT_REFUNDED)
+    → Sends cancellation email
+
+---
+
+## Cancellation Flow
+
+Two paths determined by subscription age (`subscriptions.created_at`):
+
+### Within 7 days — Refund Request
 
 ```
-Input: { eventType, payment, subscription }
-Auth: Bearer SUPABASE_SERVICE_ROLE_KEY (called only from Next.js webhook route)
-
-PAYMENT_CONFIRMED | PAYMENT_RECEIVED
-  → Find user by asaas_subscription_id
-  → tier = 'paid', subscription_status = 'active'
-  → tier_expiry = now() + 35 days (monthly) OR 370 days (annual)
-  → INSERT subscriptions (status='confirmed')
-
-PAYMENT_AWAITING_RISK_ANALYSIS
-  → subscription_status = 'pending'
-  → DO NOT activate tier
-
-PAYMENT_OVERDUE
-  → subscription_status = 'overdue'
-  → tier stays 'paid' (tier_expiry handles actual downgrade)
-  → Send warning email via Resend
-  → INSERT subscriptions (status='overdue')
-
-PAYMENT_REFUNDED | PAYMENT_DELETED | SUBSCRIPTION_DELETED
-  → tier = 'free', tier_expiry = now()
-  → subscription_status = 'cancelled'
-  → asaas_subscription_id = NULL
-  → Send cancellation email via Resend
-  → INSERT subscriptions (status='cancelled'/'refunded')
+1. User clicks "Gerenciar Assinatura" on /profile (Assinatura tab)
+2. System checks subscription age → ≤ 7 days
+3. Dialog shows: "Solicitar reembolso" + required feedback field
+4. POST /api/asaas/cancel { feedback }
+5. Server: inserts cancellation_requests row (type='refund', status='pending')
+6. Does NOT call Asaas — admin reviews manually
+7. User sees: "Enviado ao nosso time. Em breve entraremos em contato via email."
+8. User remains premium while admin handles
+9. When admin cancels via Asaas dashboard:
+   → Asaas fires PAYMENT_REFUNDED/SUBSCRIPTION_DELETED webhook
+   → Immediate access revocation
 ```
 
-### `check-subscriptions` (updated)
+**Admin action:** Check `cancellation_requests` table for `request_type='refund'` and `status='pending'`. Process refund in Asaas dashboard, then update `status='processed'`.
+
+### After 7 days — Cancel Future Invoices
 
 ```
-CHANGE: Skip users with subscription_status = 'active'
-Only downgrade users where:
-  - tier = 'paid'
-  - tier_expiry < now()
-  - subscription_status IN ('none', 'pending', 'overdue')
-  (i.e., beta/trial users or genuinely lapsed subscribers)
-
-ADD: Retry unprocessed webhook_events older than 5 minutes
-  → Re-call process-payment-event for each
-  → Mark processed=true on success
+1. User clicks "Gerenciar Assinatura"
+2. System checks subscription age → > 7 days
+3. Dialog shows: cancellation info + optional feedback
+4. POST /api/asaas/cancel { feedback }
+5. Server:
+   a. Sets cancel_at_period_end = true (BEFORE Asaas call)
+   b. Calls DELETE /subscriptions/{id} on Asaas
+   c. On Asaas error → rollback cancel_at_period_end = false
+   d. Inserts cancellation_requests row (type='cancel_future', status='processed')
+6. Asaas fires SUBSCRIPTION_DELETED webhook
+7. Webhook sees cancel_at_period_end=true → preserves tier_expiry
+8. User sees: "Cancelamento concluído. Recursos premium ativos até [data]."
+9. check-subscriptions cron downgrades user when tier_expiry passes
 ```
 
 ---
 
-## Frontend
+## `check-subscriptions` Cron (daily)
 
-### `/pricing` page (`src/app/pricing/page.tsx`)
+Runs as a Supabase Edge Function on a schedule.
 
-- Toggle: Mensal / Anual (Anual default, highlighted)
-- Fundadores banner (if `promotions.active=true AND slots_used < slots_total`):
-  - Price: R$249/ano, countdown to `active_until`, slot progress bar
-- Two plan cards with feature comparison table
-- Coupon field: `[__________] [Aplicar]` → shows final price inline
-- All "Assinar" buttons open `<CheckoutModal />`
+### Step 1 — Downgrade expired users
+Query: `tier='paid' AND tier_expiry < now() AND subscription_status != 'active'`
 
-### `CheckoutModal` (`src/components/CheckoutModal.tsx`)
+Covers:
+- Trial users whose free month ended
+- Cancelled users (`cancel_at_period_end=true`) whose period ended
+- Overdue users who never paid
 
-- Plan summary (with coupon/promo discount shown)
-- Payment method tabs: [Cartão] [PIX] [Boleto]
-- Cartão: Asaas.js tokenized form — name, number, expiry, CVV
-- Submit button disabled on first click (prevents double-submit)
-- Portuguese error message map for Asaas error codes
-- PIX: show QR code → poll `GET /api/asaas/subscription` every 5s for up to 5 min → auto-advance to success
-- Boleto: show link + instructions ("Acesso ativado após compensação — 1 a 3 dias úteis")
-- Success: redirect to `/dashboard` with toast "Bem-vindo ao Premium!"
+Action: `tier = 'free'`, `cancel_at_period_end = false`
 
-### `LimiteAtingidoModal` (`src/components/LimiteAtingidoModal.tsx`)
+> **Why skip `active` users?** Active users get their `tier_expiry` refreshed on every `PAYMENT_CONFIRMED` webhook. The cron never touches them — Asaas drives their lifecycle.
 
-- Triggered when Explorador hits 20q/day limit
-- If Fundadores active: show R$249 offer + countdown + slot bar
-- If Fundadores expired/sold out: show standard annual (R$39,90×12)
-- CTA opens `<CheckoutModal />` pre-filled with selected plan
-- Secondary action: "Continuar no plano gratuito" (dismisses modal)
+### Step 2 — Revoke unconfirmed payments after 14 days
+Query: `subscriptions.status='pending' AND subscriptions.created_at < now()-14d`
 
-### Trial expiry banner
+Crossed with `user_profiles.subscription_status='pending'`
 
-- Shown when `tier_expiry - now() < 7 days` AND `subscription_status = 'none'`
-- "Seu período de teste termina em X dias — [Assinar agora]"
+Action: `tier='free'`, `subscription_status='cancelled'`, `asaas_subscription_id=null`, `tier_expiry=now()`
 
-### Boleto recovery (`/dashboard`)
+This catches users who initiated checkout (PIX/boleto) but never paid within 14 days.
 
-- If `subscription_status = 'pending'` AND `payment_method = 'BOLETO'`
-- Show "Pagamento pendente" card with boleto link from `subscriptions.boleto_url`
+### Step 3 — Trial expiry warnings (7 days before)
+Emails users with `subscription_status='none'` whose `tier_expiry` falls in the next 7 days.
+
+### Step 4 — Retry dead-letter webhook events
+Re-processes `webhook_events` rows where `processed=false` and `created_at < now()-5min`.
 
 ---
 
-## Decision Log
+## `tier_expiry` and Bonus Days (feedback/referral)
 
-| # | Decision | Alternatives | Reason |
-|---|---|---|---|
-| 1 | Asaas (not Stripe) | Stripe | Brazilian processor required |
-| 2 | Asaas native Subscriptions | Manual charge scheduling | Asaas manages recurring billing |
-| 3 | MedLibre-hosted tokenized form | Asaas Payment Link | User never leaves the site |
-| 4 | Beta → 2026-04-30; new users 1-month trial | Ship by April 1 | More time to build + test |
-| 5 | user_profiles fast ref + subscriptions history | One table | Fast tier checks + full audit trail |
-| 6 | promotions table with slots_used counter | RPC row lock / no hard limit | Simple, reliable at expected scale |
-| 7 | Next.js validates webhook → Edge Function updates DB | All in one place | Security separation + DB colocation |
-| 8 | PIX + boleto + card in scope | Card only | Brazilian market requires it |
-| 9 | coupons table (code-based) separate from promotions | Single table | Different mechanics, different use cases |
-| A | Write pending_asaas_subscription_id before calling Asaas | Write after | Prevents webhook timing race |
-| B | Disable submit + guard on existing subscription_id | None | Prevents double-submit |
-| C | Coupon + promo stacking forbidden | Allow stacking | Protect R$249 price floor |
-| D | UNIQUE (asaas_payment_id) on subscriptions | App-level check only | DB-enforced idempotency |
-| E | check-subscriptions skips subscription_status='active' | No change | Prevents cron from downgrading paying users |
-| F | webhook_events dead-letter table + cron retry | Accept event loss | Ensures no payment event is silently lost |
-| G | GET /api/asaas/subscription reads from DB only | Live Asaas API call | Eliminates 200-500ms latency |
-| H | PAYMENT_REFUNDED → immediate downgrade | Grace period | Refunds are explicit cancellations |
-| I | PAYMENT_AWAITING_RISK_ANALYSIS → status='pending', no tier | Activate optimistically | Avoid activating fraudulent payments |
-| J | POST /api/asaas/change-plan for monthly→annual | Cancel + re-subscribe manually | Primary conversion goal — must be frictionless |
-| K | Coupons via RPC only, no direct SELECT | RLS active=true | Prevents coupon code enumeration |
-| L | Trial expiry banner at <7 days | No in-app warning | Prevents surprise downgrade experience |
-| M | boleto_url persisted on subscriptions row | Require re-checkout | Boleto recovery without duplicate subscription |
-| N | Portuguese error message map in CheckoutModal | Raw Asaas errors | UX — errors must be in Portuguese |
+`tier_expiry` is the **single access gate**. Multiple systems can extend it:
+- Payment webhook: sets it on each confirmed payment
+- Feedback/referral system: extends it by adding days
+
+**No conflict by design:** Cancellation (`cancel_at_period_end`) does not touch `tier_expiry`. The user keeps whatever expiry they have (paid + bonus). The cron handles natural expiry. This means a user who earned referral bonus days keeps them even after cancelling their subscription.
 
 ---
 
-## Environment Variables Required
+## Mock Mode
 
-```bash
-# Server-only (never NEXT_PUBLIC_)
-ASAAS_API_KEY=              # Asaas API key
-ASAAS_WEBHOOK_TOKEN=        # Token for webhook validation
-ASAAS_BASE_URL=             # https://api.asaas.com/v3 (prod) or sandbox URL
-ASAAS_MOCK=                 # 'true' only in dev/test, guarded by NODE_ENV check
-
-# Already exists
-SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_SUPABASE_URL=
-RESEND_API_KEY=
-```
+Set `ASAAS_MOCK=true` (only works in non-production) to bypass all Asaas API calls. Mock functions return fake IDs. Useful for local development without a real Asaas sandbox key.
 
 ---
 
-## Implementation Order
+## Environment Variables
 
-1. **Migrations** — schema changes, beta extension, handle_new_user update
-2. **`src/lib/asaas.ts`** — Asaas API client wrapper
-3. **Supabase Edge Function** — `process-payment-event`
-4. **Update `check-subscriptions`** — skip active subscribers, add retry cron
-5. **API routes** — checkout, validate-coupon, subscription, change-plan, webhook
-6. **Frontend** — /pricing page, CheckoutModal, LimiteAtingidoModal, trial banner, boleto recovery
-7. **End-to-end test** — sandbox: card, PIX, boleto, webhook, refund, upgrade flow
+| Variable | Description |
+|---|---|
+| `ASAAS_BASE_URL` | Asaas API base (default: `https://api.asaas.com/v3`) |
+| `ASAAS_API_KEY` | Asaas secret API key |
+| `ASAAS_MOCK` | `true` to enable mock mode (non-production only) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role (server-side only) |
+| `RESEND_API_KEY` | Resend API key for transactional emails |
+
+---
+
+## Error Handling
+
+- **Asaas errors** are translated to PT-BR via `translateAsaasError()` in `src/lib/asaas.ts`
+- **Webhook failures** land in `webhook_events` dead-letter queue and are retried by cron
+- **Checkout race condition** prevented by writing `subscription_status='pending'` to DB before calling Asaas
+- **Duplicate payment events** prevented by `UNIQUE(asaas_payment_id)` on `subscriptions` table
+- **Cancel rollback** — if Asaas `DELETE` fails, `cancel_at_period_end` is reset to `false`
+
+---
+
+## Key Decisions Log
+
+| Decision | Rationale |
+|---|---|
+| Asaas over Stripe | Brazilian processor, PIX support, local compliance |
+| Read subscription status from DB only | Avoids latency of live Asaas API call on every page load |
+| `cancel_at_period_end` flag | Lets webhook distinguish user-initiated graceful cancel from admin delete |
+| Refund handled manually | Admin needs to verify legitimacy; no automatic storno risk |
+| 7-day window from `subscriptions.created_at` | User intent at signup, not payment confirmation (avoids gaming) |
+| 14-day unconfirmed revocation | Prevents free premium from abandoned PIX/boleto checkouts |
+| Price floor R$249 | Coupon/promo abuse prevention; enforced server-side |
+| Coupon+promo stacking forbidden | Margin protection |
+| `tier_expiry` untouched on cancel_future | Bonus days (referral/feedback) are preserved — simpler, fairer |
