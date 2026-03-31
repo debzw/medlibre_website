@@ -1,5 +1,5 @@
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://medlibre.com.br';
-const FROM = 'MedLibre <institucional@medlibre.com.br>';
+const FROM = 'Medlibre <institucional@medlibre.com.br>';
 const RESEND_API_KEY = process.env.RESEND_API_KEY!;
 
 // ─── Token HMAC (stateless, sem tabela adicional) ────────────────────────────

@@ -200,7 +200,7 @@ export const WelcomeEmail = ({
               </Link>
             </Text>
             <Text style={footerText}>
-              MedLibre Treinamento Ltda · CNPJ 65.628.534/0001-02 · institucional@medlibre.com.br
+              Medlibre Treinamento Ltda · CNPJ 65.628.534/0001-02 · institucional@medlibre.com.br
             </Text>
           </Section>
 

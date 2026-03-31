@@ -1,4 +1,4 @@
-# MedLibre — Analytics Engine: Implementation Log & Roadmap
+# Medlibre — Analytics Engine: Implementation Log & Roadmap
 
 ## Status
 

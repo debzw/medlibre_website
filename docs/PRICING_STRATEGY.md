@@ -1,4 +1,4 @@
-# MedLibre — Estratégia de Preços e Análise de Mercado
+# Medlibre — Estratégia de Preços e Análise de Mercado
 
 > Documento interno. Atualizado em março de 2026.
 
@@ -75,13 +75,13 @@
     (R$3.5k/ano)        │
                         │
     SanarFlix   MedQ    │
-    (R$599/ano)(R$1.2k) │  ← MedLibre Premium →
+    (R$599/ano)(R$1.2k) │  ← Medlibre Premium →
                         │   (R$479/ano)
     Medeor              │
     (R$359/ano)         │
 ─────────────────────────────────────── PREÇO
                    GRATUITO
-    MedLibre Free
+    Medlibre Free
     (20q/dia + ads)
 ```
 
@@ -167,7 +167,7 @@
 | Y2 | 80.000 | 7.200 | 9% | R$ 3,5M |
 | Y3 | 200.000 | 24.000 | 12% | R$ 11,5M |
 
-> Referência: MedCof atingiu R$22M ARR com 11.500 alunos a ~R$1.900/ano médio. MedLibre a R$479/ano precisa de ~46.000 pagantes para equivalência — factível no cenário otimista Y3–Y4.
+> Referência: MedCof atingiu R$22M ARR com 11.500 alunos a ~R$1.900/ano médio. Medlibre a R$479/ano precisa de ~46.000 pagantes para equivalência — factível no cenário otimista Y3–Y4.
 
 ---
 

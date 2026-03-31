@@ -1,4 +1,4 @@
-# SEO MedLibre — Fase 6: Melhorias Pendentes
+# SEO Medlibre — Fase 6: Melhorias Pendentes
 
 > **Status:** Fases 1–5 concluídas. Este documento registra o que falta implementar.
 > **Data:** 2026-03-14

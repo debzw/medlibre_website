@@ -7,7 +7,7 @@ const IS_MOCK = process.env.ASAAS_MOCK === 'true' && process.env.NODE_ENV !== 'p
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type BillingType = 'CREDIT_CARD' | 'PIX' | 'BOLETO'
+export type BillingType = 'CREDIT_CARD' | 'PIX'
 export type BillingCycle = 'MONTHLY' | 'YEARLY'
 
 export interface AsaasCustomer {
@@ -34,9 +34,6 @@ export interface AsaasPayment {
   value: number
   pixQrCodeImage?: string
   pixCopiaECola?: string
-  bankSlipUrl?: string
-  invoiceUrl?: string
-  nossoNumero?: string
 }
 
 export interface CreateCustomerInput {
@@ -172,6 +169,11 @@ export async function getSubscriptionPayments(subscriptionId: string): Promise<A
     `/payments?subscription=${subscriptionId}&limit=1`,
   )
   return res.data
+}
+
+export async function getPaymentPixQrCode(paymentId: string): Promise<{ encodedImage: string; payload: string }> {
+  if (IS_MOCK) return { encodedImage: '', payload: '' }
+  return asaasRequest<{ encodedImage: string; payload: string }>('GET', `/payments/${paymentId}/pixQrCode`)
 }
 
 // ─── Error message map (PT-BR) ─────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-MedLibre — Startup Analysis & Pricing Strategy
+Medlibre — Startup Analysis & Pricing Strategy
 1. MARKET OPPORTUNITY
 TAM / SAM / SOM
 Metric	Value	Basis
@@ -26,13 +26,13 @@ Positioning Map
     (R$3.5k/yr)        │
                         │
     SanarFlix ●  MedQ ●│
-    (R$600/yr) (R$1.2k) │  ← MedLibre should land HERE →
+    (R$600/yr) (R$1.2k) │  ← Medlibre should land HERE →
                         │
-    Medeor ●            │     ● MedLibre PREMIUM (R$299/yr)
+    Medeor ●            │     ● Medlibre PREMIUM (R$299/yr)
     (R$359/yr)          │
                         │
     ──── FREE ──────────┼────────────────────────────────
-    MedLibre Free ●     │
+    Medlibre Free ●     │
     (20q/day + ads)     │
                    LOW PRICE
 Competitor Snapshot
@@ -157,7 +157,7 @@ Year	Free Users	Paid Users	Conv. Rate	ARR
 Y1	20,000	1,200	6%	R$ 300K
 Y2	80,000	7,200	9%	R$ 1.9M
 Y3	200,000	24,000	12%	R$ 6.5M
-Benchmark: MedCof had R$ 22M ARR with 11,500 students at R$1,900/year avg. MedLibre at R$299/year needs ~73,000 paying users to match — achievable in Y3–Y4 at optimistic trajectory.
+Benchmark: MedCof had R$ 22M ARR with 11,500 students at R$1,900/year avg. Medlibre at R$299/year needs ~73,000 paying users to match — achievable in Y3–Y4 at optimistic trajectory.
 
 8. AGGRESSIVENESS RECOMMENDATION
 Be very aggressive on price, conservative on features.
@@ -178,4 +178,4 @@ Build referral system before scaling ads — word-of-mouth in med school network
 Track conversion funnel: Free signup → first study session → day 7 return → day 20 limit hit → upgrade
 A/B test annual vs. monthly as default on pricing page — annual-first presentation increases annual conversion by ~20-30% in SaaS
 Future — B2B pilot: Reach out to 2-3 medical schools with free institutional access in exchange for co-marketing
-Bottom line: MedLibre is positioned at an extremely compelling intersection — the only science-grade free question bank in a R$1.5B+ market dominated by overpriced, algorithm-free incumbents. Price the premium tier aggressively at R$299/year to undercut everyone while maintaining strong margins. Launch with the Fundadores offer at R$149 to build your first 500 paying users and social proof before the main campaign.
+Bottom line: Medlibre is positioned at an extremely compelling intersection — the only science-grade free question bank in a R$1.5B+ market dominated by overpriced, algorithm-free incumbents. Price the premium tier aggressively at R$299/year to undercut everyone while maintaining strong margins. Launch with the Fundadores offer at R$149 to build your first 500 paying users and social proof before the main campaign.

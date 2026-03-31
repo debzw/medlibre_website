@@ -25,23 +25,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: profileError.message }, { status: 500 })
   }
 
-  let boletoUrl: string | null = null
-  if (data.subscription_status === 'pending') {
-    const { data: sub } = await adminSupabase
-      .from('subscriptions')
-      .select('boleto_url, payment_method')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    if (sub?.payment_method === 'BOLETO') boletoUrl = sub.boleto_url ?? null
-  }
-
   return NextResponse.json({
     status: data.subscription_status,
     billingCycle: data.billing_cycle,
     nextDueDate: data.tier_expiry,
     hasActiveSubscription: !!data.asaas_subscription_id,
-    boletoUrl,
   })
 }

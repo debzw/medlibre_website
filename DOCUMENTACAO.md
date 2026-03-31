@@ -1,11 +1,11 @@
-# Documentação do Sistema MedLibre 🚀
+# Documentação do Sistema Medlibre 🚀
 
-O MedLibre é uma plataforma freemium avançada de preparação para residência médica, projetada para otimizar o estudo através de evidências científicas (Active Recall e Spaced Repetition). Esta documentação detalha cada funcionalidade e o funcionamento lógico do site.
+O Medlibre é uma plataforma freemium avançada de preparação para residência médica, projetada para otimizar o estudo através de evidências científicas (Active Recall e Spaced Repetition). Esta documentação detalha cada funcionalidade e o funcionamento lógico do site.
 
 ---
 
 ## 1. Core Vision (A Visão Central)
-O objetivo do MedLibre é ser a alternativa inteligente aos "cursinhos" tradicionais. Enquanto os cursos convencionais focam em estudo passivo (videoaulas intermináveis), o MedLibre foca no **Direcionamento ao Erro** e na **Prática Constante**.
+O objetivo do Medlibre é ser a alternativa inteligente aos "cursinhos" tradicionais. Enquanto os cursos convencionais focam em estudo passivo (videoaulas intermináveis), o Medlibre foca no **Direcionamento ao Erro** e na **Prática Constante**.
 
 ---
 
@@ -64,7 +64,7 @@ Páginas dedicadas a mergulhar fundo nos dados de estudo.
 ---
 
 ## 7. Padrões Visuais (Aesthetic)
-O MedLibre utiliza uma identidade visual sofisticada:
+O Medlibre utiliza uma identidade visual sofisticada:
 - **Cores Semânticas**: Gold (Premium/Progresso), Indigo (Foco), Grey (Neutralidade).
 - **Tipografia**: `Archivo Black` para títulos impactantes e `Lexend Deca` para legibilidade máxima no corpo do texto.
 - **Modo Escuro (Dark Mode)**: Prioritário para reduzir o cansaço visual durante longas sessões de estudo noturno.

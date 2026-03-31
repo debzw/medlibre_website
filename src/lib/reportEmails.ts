@@ -6,7 +6,7 @@ import { getFieldLabel } from './vertexAI';
 const RESEND_API_KEY = process.env.RESEND_API_KEY!;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://medlibre.com.br';
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
-const FROM = 'MedLibre <institucional@medlibre.com.br>';
+const FROM = 'Medlibre <institucional@medlibre.com.br>';
 
 // ---------------------------------------------------------------------------
 // Shared HTML shell (matches existing brand)
@@ -234,7 +234,7 @@ export async function sendReporterThankYouEmail(
     ${fixes.map((f) => diffRow(getFieldLabel(f.field), f.old_value, f.new_value)).join('')}
 
     <p class="font-body" style="font-size:15px;line-height:1.6;color:#293452;margin-top:24px;">
-      Sua contribuição torna o MedLibre melhor para toda a comunidade médica. Muito obrigado!
+      Sua contribuição torna o Medlibre melhor para toda a comunidade médica. Muito obrigado!
     </p>
   `;
 

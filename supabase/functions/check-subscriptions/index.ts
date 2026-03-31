@@ -9,7 +9,7 @@ const resend = Deno.env.get('RESEND_API_KEY')
   ? new Resend(Deno.env.get('RESEND_API_KEY'))
   : null
 const PROCESS_PAYMENT_URL = `${Deno.env.get('SUPABASE_URL')}/functions/v1/process-payment-event`
-const FROM = 'MedLibre <noreply@medlibre.com.br>'
+const FROM = 'Medlibre <noreply@medlibre.com.br>'
 
 Deno.serve(async () => {
   try {

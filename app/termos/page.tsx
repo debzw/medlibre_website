@@ -46,7 +46,7 @@ export default function TermsOfServicePage() {
                 <section>
                     <h2 className="text-2xl font-semibold mb-3 text-primary">4. Limitação de Responsabilidade</h2>
                     <p>
-                        O MedLibre fornece ferramentas de estudo, mas não garante a aprovação em exames ou a precisão absoluta de todas
+                        O Medlibre fornece ferramentas de estudo, mas não garante a aprovação em exames ou a precisão absoluta de todas
                         as questões, que servem apenas como material de apoio. Não somos responsáveis por decisões clínicas tomadas com base no conteúdo da plataforma.
                     </p>
                 </section>

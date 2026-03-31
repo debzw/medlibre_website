@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
 import {
   findOrCreateCustomer,
   createSubscription,
   getSubscriptionPayments,
+  getPaymentPixQrCode,
   translateAsaasError,
   type BillingType,
   type BillingCycle,
@@ -14,6 +16,94 @@ import {
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const FROM = 'Medlibre <noreply@medlibre.com.br>'
+
+const PLAN_LABELS: Record<string, string> = {
+  monthly: 'Mensal',
+  annual: 'Anual',
+  founders: 'Fundadores',
+  early_adopter: 'Early Adopter',
+}
+
+function pixConfirmationHtml(opts: {
+  name: string
+  pixCopiaECola: string
+  pixQrCode: string | null
+  plan: string
+  amountReais: number
+}): string {
+  const { name, pixCopiaECola, pixQrCode, plan, amountReais } = opts
+  const planLabel = PLAN_LABELS[plan] ?? plan
+  const amountFmt = amountReais.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1a1a2e">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;padding:40px 16px">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:32px 40px;text-align:center">
+            <p style="margin:0 0 6px;font-size:13px;font-weight:600;letter-spacing:.08em;color:#93c5fd;text-transform:uppercase">Medlibre Premium</p>
+            <h1 style="margin:0;font-size:24px;font-weight:700;color:#ffffff">Quase lá! 🎉</h1>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px">
+            <p style="margin:0 0 20px;font-size:16px;line-height:1.6">
+              Olá, <strong>${name.split(' ')[0]}</strong>!<br><br>
+              Obrigado por escolher o <strong>Medlibre Premium</strong>. Sua assinatura do plano <strong>${planLabel}</strong> (${amountFmt}) está quase ativa — só falta concluir o pagamento via PIX.
+            </p>
+
+            <!-- QR Code -->
+            ${pixQrCode ? `
+            <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:#374151;text-align:center">Escaneie o QR Code:</p>
+            <div style="text-align:center;margin-bottom:24px">
+              <img src="${pixQrCode}" alt="QR Code PIX" width="180" height="180"
+                style="border:4px solid #e5e7eb;border-radius:8px;display:inline-block">
+            </div>` : ''}
+
+            <!-- Copia e Cola -->
+            <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#374151">Ou copie o código PIX:</p>
+            <div style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:14px 16px;word-break:break-all;font-family:monospace;font-size:12px;color:#374151;margin-bottom:24px">
+              ${pixCopiaECola}
+            </div>
+
+            <!-- Info box -->
+            <div style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:28px">
+              <p style="margin:0;font-size:13px;color:#1e40af;line-height:1.5">
+                ⏱ O PIX expira em <strong>24 horas</strong>. Assim que identificarmos o pagamento, seu acesso Premium será ativado automaticamente.
+              </p>
+            </div>
+
+            <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6">
+              Se tiver qualquer dúvida, responda este e-mail ou acesse o <a href="https://medlibre.com.br/dashboard" style="color:#2563eb;text-decoration:none;font-weight:600">seu painel</a>.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f9fafb;padding:20px 40px;text-align:center;border-top:1px solid #e5e7eb">
+            <p style="margin:0;font-size:12px;color:#9ca3af">
+              © ${new Date().getFullYear()} Medlibre · <a href="https://medlibre.com.br" style="color:#9ca3af">medlibre.com.br</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
 
 const adminSupabase = createClient(SUPABASE_URL, SERVICE_KEY)
 
@@ -61,10 +151,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Dados obrigatórios ausentes.' }, { status: 400 })
   }
 
-  if (paymentMethod === 'BOLETO') {
-    return NextResponse.json({ error: 'Boleto não disponível.' }, { status: 400 })
-  }
-
   if (paymentMethod === 'CREDIT_CARD' && (!cardToken || !holderInfo)) {
     return NextResponse.json({ error: 'Dados do cartão são obrigatórios.' }, { status: 400 })
   }
@@ -81,11 +167,33 @@ export async function POST(req: NextRequest) {
   // Idempotency guard: already subscribed?
   const { data: currentProfile } = await adminSupabase
     .from('user_profiles')
-    .select('asaas_subscription_id, asaas_customer_id')
+    .select('asaas_subscription_id, asaas_customer_id, subscription_status')
     .eq('id', user.id)
     .single()
 
   if (currentProfile?.asaas_subscription_id) {
+    // If pending (PIX not paid yet), return existing QR code instead of blocking
+    if (currentProfile.subscription_status === 'pending') {
+      try {
+        const payments = await getSubscriptionPayments(currentProfile.asaas_subscription_id)
+        const payment = payments[0]
+        let pixQrCode: string | null = null
+        let pixCopiaECola: string | null = null
+        if (payment?.id) {
+          const pixData = await getPaymentPixQrCode(payment.id)
+          pixQrCode = pixData.encodedImage ? `data:image/png;base64,${pixData.encodedImage}` : null
+          pixCopiaECola = pixData.payload ?? null
+        }
+        return NextResponse.json({
+          subscriptionId: currentProfile.asaas_subscription_id,
+          status: 'PENDING',
+          pixQrCode,
+          pixCopiaECola,
+        })
+      } catch {
+        // Fall through to error if we can't fetch the existing payment
+      }
+    }
     return NextResponse.json({ error: 'Você já possui uma assinatura ativa.' }, { status: 409 })
   }
 
@@ -193,9 +301,36 @@ export async function POST(req: NextRequest) {
       await adminSupabase.rpc('increment_coupon_uses', { p_coupon_id: couponId })
     }
 
-    // Fetch first payment details (PIX QR / boleto URL)
+    // Fetch first payment details (PIX QR code)
     const payments = await getSubscriptionPayments(subscription.id)
     const firstPayment = payments[0]
+
+    // Fetch PIX QR code via dedicated endpoint (not included in list response)
+    let pixQrCode: string | null = null
+    let pixCopiaECola: string | null = null
+    if (paymentMethod === 'PIX' && firstPayment?.id) {
+      try {
+        const pixData = await getPaymentPixQrCode(firstPayment.id)
+        pixQrCode = pixData.encodedImage ? `data:image/png;base64,${pixData.encodedImage}` : null
+        pixCopiaECola = pixData.payload ?? null
+      } catch { /* ignore — user can still use copia e cola */ }
+    }
+
+    // Send PIX confirmation email (fire-and-forget)
+    if (paymentMethod === 'PIX' && pixCopiaECola && resend) {
+      resend.emails.send({
+        from: FROM,
+        to: [billingInfo.email],
+        subject: 'Seu PIX para ativar o Medlibre Premium',
+        html: pixConfirmationHtml({
+          name: billingInfo.name,
+          pixCopiaECola,
+          pixQrCode,
+          plan,
+          amountReais: finalPriceReais,
+        }),
+      }).catch(console.error)
+    }
 
     // Insert subscriptions row
     await adminSupabase.from('subscriptions').insert({
@@ -206,16 +341,14 @@ export async function POST(req: NextRequest) {
       amount_cents: finalPriceCents,
       status: 'pending',
       payment_method: paymentMethod,
-      boleto_url: firstPayment?.bankSlipUrl ?? firstPayment?.invoiceUrl ?? null,
       coupon_id: couponId,
     })
 
     return NextResponse.json({
       subscriptionId: subscription.id,
       status: subscription.status,
-      pixQrCode: firstPayment?.pixQrCodeImage ?? null,
-      pixCopiaECola: firstPayment?.pixCopiaECola ?? null,
-      boletoUrl: firstPayment?.bankSlipUrl ?? firstPayment?.invoiceUrl ?? null,
+      pixQrCode,
+      pixCopiaECola,
       nextDueDate: subscription.nextDueDate,
     })
   } catch (err) {

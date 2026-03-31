@@ -105,7 +105,6 @@ export async function POST(req: NextRequest) {
       amount_cents: 69900,
       status: 'pending',
       payment_method: billingType,
-      boleto_url: firstPayment?.bankSlipUrl ?? firstPayment?.invoiceUrl ?? null,
     })
 
     return NextResponse.json({
