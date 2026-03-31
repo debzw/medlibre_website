@@ -76,34 +76,34 @@ export default function StatisticsPage() {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col p-6 sm:p-10 lg:pl-16 overflow-y-auto">
                 {/* Header Segment for Time Period */}
-                <header className="flex justify-center mb-6">
+                <header className="flex justify-center mb-10 mt-2">
                     <Tabs defaultValue="all" value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)}>
-                        <TabsList className="bg-secondary/20 dark:bg-white/5 border border-border dark:border-white/10 p-1 rounded-full ring-0 shadow-sm h-auto flex gap-1">
+                        <TabsList className="bg-secondary/30 dark:bg-white/5 backdrop-blur-xl border border-border/40 p-1.5 rounded-full shadow-inner h-auto flex gap-1">
                             {/* HOJE */}
                             <TabsTrigger 
                                 value="today" 
-                                className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/10 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[9px] sm:text-[11px] uppercase tracking-widest px-3 sm:px-5 py-1.5 transition-all"
+                                className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/15 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-md text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[10px] sm:text-xs uppercase tracking-widest px-4 sm:px-6 py-2 transition-all duration-300"
                             >
                                 Hoje
                             </TabsTrigger>
                             {/* SEMANA */}
                             <TabsTrigger 
                                 value="week" 
-                                className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/10 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[9px] sm:text-[11px] uppercase tracking-widest px-3 sm:px-5 py-1.5 transition-all"
+                                className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/15 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-md text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[10px] sm:text-xs uppercase tracking-widest px-4 sm:px-6 py-2 transition-all duration-300"
                             >
                                 Semana
                             </TabsTrigger>
                             {/* MÊS */}
                             <TabsTrigger 
                                 value="month" 
-                                className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/10 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[9px] sm:text-[11px] uppercase tracking-widest px-3 sm:px-5 py-1.5 transition-all"
+                                className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/15 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-md text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[10px] sm:text-xs uppercase tracking-widest px-4 sm:px-6 py-2 transition-all duration-300"
                             >
                                 Mês
                             </TabsTrigger>
                             {/* SEMPRE */}
                             <TabsTrigger 
                                 value="all" 
-                                className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/20 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[9px] sm:text-[11px] uppercase tracking-widest px-3 sm:px-5 py-1.5 transition-all"
+                                className="rounded-full data-[state=active]:bg-background dark:data-[state=active]:bg-white/15 data-[state=active]:text-foreground dark:data-[state=active]:text-white data-[state=active]:shadow-md text-muted-foreground hover:text-foreground dark:hover:text-white font-bold text-[10px] sm:text-xs uppercase tracking-widest px-4 sm:px-6 py-2 transition-all duration-300"
                             >
                                 Sempre
                             </TabsTrigger>

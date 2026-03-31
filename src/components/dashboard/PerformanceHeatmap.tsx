@@ -88,8 +88,8 @@ export function PerformanceHeatmap({ mode = 'binary', areaFilter }: PerformanceH
         <div className="w-full select-none">
             {tooltip && (
                 <div
-                    className="fixed z-50 pointer-events-none px-2 py-1 rounded-md bg-popover text-popover-foreground text-xs font-body font-semibold shadow-md -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95"
-                    style={{ left: tooltip.x, top: tooltip.y - 8 }}
+                    className="fixed z-50 pointer-events-none px-3 py-1.5 rounded-xl bg-background/80 dark:bg-popover/80 backdrop-blur-xl border border-white/10 dark:border-white/5 text-foreground text-xs font-medium shadow-xl -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95"
+                    style={{ left: tooltip.x, top: tooltip.y - 12 }}
                 >
                     {tooltip.label}
                 </div>
@@ -138,6 +138,10 @@ export function PerformanceHeatmap({ mode = 'binary', areaFilter }: PerformanceH
                                     : (cell.isEmpty ? emptyColor : getHeatmapColor(cell.accuracy));
                                 const col = Math.floor(i / rows);
 
+                                // Efeito de brilho (glow) e leve transparência para blocos ativos
+                                const blockBgColor = cell.isEmpty ? bgColor : `${bgColor}E6`; // leve transparência (90% opaco)
+                                const blockShadow = cell.isEmpty ? 'none' : `0 0 12px ${bgColor}80, inset 0 1px 2px rgba(255,255,255,0.4)`;
+
                                 const cellLabel = !isBinary && !cell.isEmpty ? `${cell.dateLabel} · ${cell.accuracy}%` : cell.dateLabel;
                                 return (
                                     <motion.div
@@ -155,10 +159,12 @@ export function PerformanceHeatmap({ mode = 'binary', areaFilter }: PerformanceH
                                             setTooltip({ x: touch.clientX, y: touch.clientY, label: cellLabel });
                                         }}
                                         onTouchEnd={() => setTimeout(() => setTooltip(null), 1200)}
-                                        className="w-[28px] h-[28px] sm:w-[32px] sm:h-[32px] rounded-md sm:rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-heading transition-transform hover:scale-110 z-10 hover:z-20 cursor-default shadow-sm"
+                                        className={`w-[28px] h-[28px] sm:w-[32px] sm:h-[32px] rounded-md sm:rounded-lg flex items-center justify-center text-[10px] sm:text-xs transition-transform z-10 hover:z-20 cursor-default border border-white/20 dark:border-white/10 ${!cell.isEmpty && 'hover:scale-110 hover:shadow-lg'}`}
                                         style={{
-                                            backgroundColor: bgColor,
-                                            color: cell.isEmpty ? 'currentColor' : 'rgba(0,0,0,0.6)',
+                                            backgroundColor: blockBgColor,
+                                            boxShadow: blockShadow,
+                                            backdropFilter: cell.isEmpty ? 'none' : 'blur(4px)',
+                                            color: cell.isEmpty ? 'currentColor' : 'rgba(0,0,0,0.8)',
                                             opacity: cell.isEmpty ? 0.3 : 1,
                                         }}
                                     >

@@ -82,7 +82,7 @@ export function DashboardSidebar() {
     return (
         <aside
             className={cn(
-                "h-full flex flex-col bg-sidebar-background dark:bg-card/40 backdrop-blur-xl border-r border-sidebar-border dark:border-border/50 transition-all duration-300 overflow-hidden shrink-0",
+                "h-full flex flex-col bg-sidebar-background/80 dark:bg-muted/10 backdrop-blur-3xl shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.4)] border-r border-sidebar-border dark:border-white/5 transition-all duration-300 overflow-hidden shrink-0 z-10",
                 collapsed ? "w-[60px]" : "w-full md:w-[240px] xl:w-[280px]"
             )}
         >
