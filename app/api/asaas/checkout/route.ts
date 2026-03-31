@@ -4,6 +4,7 @@ import { Resend } from 'resend'
 import {
   findOrCreateCustomer,
   createSubscription,
+  cancelSubscription,
   getSubscriptionPayments,
   getPaymentPixQrCode,
   translateAsaasError,
@@ -172,29 +173,52 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (currentProfile?.asaas_subscription_id) {
-    // If pending (PIX not paid yet), return existing QR code instead of blocking
     if (currentProfile.subscription_status === 'pending') {
-      try {
-        const payments = await getSubscriptionPayments(currentProfile.asaas_subscription_id)
-        const payment = payments[0]
-        let pixQrCode: string | null = null
-        let pixCopiaECola: string | null = null
-        if (payment?.id) {
-          const pixData = await getPaymentPixQrCode(payment.id)
-          pixQrCode = pixData.encodedImage ? `data:image/png;base64,${pixData.encodedImage}` : null
-          pixCopiaECola = pixData.payload ?? null
+      // Check if user is requesting a different plan (e.g., switched annual → monthly)
+      const { data: existingSub } = await adminSupabase
+        .from('subscriptions')
+        .select('plan')
+        .eq('asaas_subscription_id', currentProfile.asaas_subscription_id)
+        .maybeSingle()
+
+      if (existingSub?.plan && existingSub.plan !== plan) {
+        // Plan changed — cancel old pending subscription and create a new one below
+        try { await cancelSubscription(currentProfile.asaas_subscription_id) } catch { /* best-effort */ }
+        await adminSupabase
+          .from('user_profiles')
+          .update({ asaas_subscription_id: null, subscription_status: null })
+          .eq('id', user.id)
+        await adminSupabase
+          .from('subscriptions')
+          .update({ status: 'cancelled' })
+          .eq('asaas_subscription_id', currentProfile.asaas_subscription_id)
+        // No return — falls through to create new subscription
+      } else {
+        // Same plan — return existing PIX QR code (idempotent)
+        try {
+          const payments = await getSubscriptionPayments(currentProfile.asaas_subscription_id)
+          const payment = payments[0]
+          let pixQrCode: string | null = null
+          let pixCopiaECola: string | null = null
+          if (payment?.id) {
+            const pixData = await getPaymentPixQrCode(payment.id)
+            pixQrCode = pixData.encodedImage ? `data:image/png;base64,${pixData.encodedImage}` : null
+            pixCopiaECola = pixData.payload ?? null
+          }
+          return NextResponse.json({
+            subscriptionId: currentProfile.asaas_subscription_id,
+            status: 'PENDING',
+            pixQrCode,
+            pixCopiaECola,
+          })
+        } catch {
+          // Fall through to error if we can't fetch the existing payment
         }
-        return NextResponse.json({
-          subscriptionId: currentProfile.asaas_subscription_id,
-          status: 'PENDING',
-          pixQrCode,
-          pixCopiaECola,
-        })
-      } catch {
-        // Fall through to error if we can't fetch the existing payment
+        return NextResponse.json({ error: 'Você já possui uma assinatura ativa.' }, { status: 409 })
       }
+    } else {
+      return NextResponse.json({ error: 'Você já possui uma assinatura ativa.' }, { status: 409 })
     }
-    return NextResponse.json({ error: 'Você já possui uma assinatura ativa.' }, { status: 409 })
   }
 
   let finalPriceCents = PLAN_PRICES[plan]
