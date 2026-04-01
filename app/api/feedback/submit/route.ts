@@ -28,7 +28,9 @@ export async function POST(request: NextRequest) {
     };
 
     // Valida token
+    console.log('[feedback/submit] token recebido:', token?.slice(0, 40), '...');
     const userId = await verifyFeedbackToken(token);
+    console.log('[feedback/submit] userId após verify:', userId);
     if (!userId) {
       return NextResponse.json(
         { error: 'Link inválido ou expirado. Solicite um novo link através do e-mail recebido.' },

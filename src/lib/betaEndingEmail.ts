@@ -28,13 +28,24 @@ export async function signFeedbackToken(userId: string): Promise<string> {
 export async function verifyFeedbackToken(token: string): Promise<string | null> {
   try {
     const [payloadB64, sigHex] = token.split('.');
-    if (!payloadB64 || !sigHex) return null;
+    if (!payloadB64 || !sigHex) {
+      console.log('[verifyFeedbackToken] FAIL: payloadB64 ou sigHex ausente', { payloadB64, sigHex });
+      return null;
+    }
 
     const payload = Buffer.from(payloadB64, 'base64url').toString('utf-8');
     const [userId, expiryStr] = payload.split(':');
-    if (!userId || !expiryStr) return null;
+    if (!userId || !expiryStr) {
+      console.log('[verifyFeedbackToken] FAIL: userId ou expiryStr ausente', { payload });
+      return null;
+    }
 
-    if (Date.now() > parseInt(expiryStr, 10)) return null; // expirado
+    const now = Date.now();
+    const expiry = parseInt(expiryStr, 10);
+    if (now > expiry) {
+      console.log('[verifyFeedbackToken] FAIL: expirado', { now, expiry, diff_hours: Math.round((now - expiry) / 3600000) });
+      return null; // expirado
+    }
 
     const secret = process.env.ADMIN_EMAIL_SECRET!;
     const key = await crypto.subtle.importKey(
@@ -50,15 +61,22 @@ export async function verifyFeedbackToken(token: string): Promise<string | null>
       .join('');
 
     // Comparação em tempo constante
-    if (sigHex.length !== expectedHex.length) return null;
+    if (sigHex.length !== expectedHex.length) {
+      console.log('[verifyFeedbackToken] FAIL: tamanho de assinatura diferente', { sigHex_len: sigHex.length, expectedHex_len: expectedHex.length });
+      return null;
+    }
     let diff = 0;
     for (let i = 0; i < sigHex.length; i++) {
       diff |= sigHex.charCodeAt(i) ^ expectedHex.charCodeAt(i);
     }
-    if (diff !== 0) return null;
+    if (diff !== 0) {
+      console.log('[verifyFeedbackToken] FAIL: assinatura não confere (secret errado ou payload alterado)');
+      return null;
+    }
 
     return userId;
-  } catch {
+  } catch (err) {
+    console.log('[verifyFeedbackToken] FAIL: exceção', err);
     return null;
   }
 }
